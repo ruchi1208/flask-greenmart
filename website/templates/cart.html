@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container my-5">
+    <h2 class="text-center mb-5">Cart</h2>
+
+    {% if cart %}
+    <div class="row">
+
+        <!-- LEFT: CART TABLE -->
+        <div class="col-lg-8">
+            <table class="table align-middle">
+                <thead class="border-bottom">
+                    <tr>
+                        <th></th>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th class="text-center">Quantity</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                {% for item in cart %}
+                    <tr class="border-bottom">
+                        <!-- Remove -->
+                        <td>
+                            <form method="POST"
+                                  action="{{ url_for('views.remove_cart_item', product_id=item.id) }}">
+                                <button class="btn btn-link text-danger fs-4">&times;</button>
+                            </form>
+                        </td>
+
+                        <!-- Product -->
+                        <td class="d-flex align-items-center gap-3">
+                            <img src="{{ url_for('static', filename=item['image']) }}" width="60">
+                            <span>{{ item.name }}</span>
+                        </td>
+
+                        <!-- Price -->
+                        <td>${{ item.price }}</td>
+
+                        <!-- Quantity -->
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center align-items-center gap-2">
+
+                                <form method="POST"
+                                      action="{{ url_for('views.update_cart', product_id=item.id, action='decrease') }}">
+                                    <button class="btn btn-outline-secondary btn-sm">−</button>
+                                </form>
+
+                                <span class="px-2">{{ item.quantity }}</span>
+
+                                <form method="POST"
+                                      action="{{ url_for('views.update_cart', product_id=item.id, action='increase') }}">
+                                    <button class="btn btn-outline-secondary btn-sm">+</button>
+                                </form>
+
+                            </div>
+                        </td>
+
+                        <!-- Subtotal -->
+                        <td>${{ item.subtotal }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            <!-- Coupon + Update -->
+            <div class="d-flex gap-3 mt-4">
+                <input type="text" class="form-control w-50" placeholder="Coupon code">
+                <button class="btn btn-success">Apply coupon</button>
+                <form method="POST" action="{{ url_for('views.clear_cart') }}">
+                    <button class="btn btn-outline-secondary">Clear cart</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- RIGHT: CART TOTALS -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm p-4">
+                <h4 class="mb-4">Cart Totals</h4>
+
+                <div class="d-flex justify-content-between border-bottom pb-2">
+                    <span>Subtotal</span>
+                    <strong>${{ total_price }}</strong>
+                </div>
+
+                <div class="d-flex justify-content-between mt-3">
+                    <span>Total</span>
+                    <strong>${{ total_price }}</strong>
+                </div>
+
+                <a href="{{ url_for('views.checkout') }}" class="btn btn-success w-100 mt-4">
+                    Proceed to checkout
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    {% else %}
+        <p class="text-center text-muted">Your cart is empty.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Green Mart{% endblock %}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+
+
+</head>
+
+<body>
+
+<!-- Top Header -->
+<div class="container-fluid top-header">
+  <h5 class="text-center mb-0">Welcome to Our Green Mart.</h5>
+</div>
+
+<!-- Main Header -->
+<header class="main-header d-flex flex-wrap align-items-center justify-content-between p-3">
+
+  <!-- Logo -->
+  <div class="logo-area">
+    <a href="{{ url_for('views.home') }}">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo" class="img-fluid">
+    </a>
+  </div>
+
+ 
+  <div class="search-area flex-grow-1 mx-3 position-relative d-none d-lg-flex">
+    <form class="search-box d-flex" action="{{ url_for('views.search') }}" method="get">
+      <input type="text" name="q" id="liveSearch" class="form-control" placeholder="Search products..." autocomplete="off">
+      <button type="submit">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </button>
+    </form>
+    <div id="searchResults" class="list-group position-absolute w-100" style="z-index:1000; display:none;"></div>
+  </div>
+
+  <!-- Icons -->
+  <div class="icons-area d-flex align-items-center gap-3 flex-shrink-0">
+    <a href="{{ url_for('views.wishlist') }}"><i class="fa-solid fa-heart"></i></a>
+    <div class="cart-box position-relative">
+      <a href="{{ url_for('views.cart') }}">
+        <i class="fa-solid fa-bag-shopping fs-5"></i>
+      </a>
+      <span class="cart-price position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+        ${{ subtotal }}
+      </span>
+    </div>
+    {% if current_user.is_authenticated %}
+    <div class="dropdown">
+      <a class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle"
+         data-bs-toggle="dropdown">
+        <i class="fa-solid fa-user fs-5"></i>
+        <span class="ms-2 fw-bold" style="color:white;">{{ current_user.name }}</span>
+      </a>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{{ url_for('views.profile') }}">Profile</a></li>
+        <li><a class="dropdown-item" href="{{ url_for('views.logout') }}">Logout</a></li>
+      </ul>
+    </div>
+    {% else %}
+      <i class="fa-solid fa-user fs-5" data-bs-toggle="modal" data-bs-target="#loginModal"></i>
+    {% endif %}
+  </div>
+</header>
+
+<!-- Navbar -->
+<div class="container nav">
+  <nav class="navbar navbar-expand-lg navbar-light bg-white p-4">
+    <div class="container-fluid">
+
+      <!-- Categories Dropdown -->
+      <div class="dropdown me-3">
+        <button class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown">
+          All Categories
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="{{ url_for('views.best_deals') }}">Best Deals</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('views.dairy_beverages') }}">Dairy & Beverages</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('views.grains_nuts') }}">Grains & Nuts</a></li>
+          <li><a class="dropdown-item" href="{{ url_for('views.spices_snacks') }}">Spices & Snacks</a></li>
+        </ul>
+      </div>
+
+      <!-- Hamburger Toggle -->
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+        aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <!-- Navbar Links -->
+      <div class="collapse navbar-collapse" id="mainNavbar">
+
+    
+        <!-- Mobile Search
+<div class="d-lg-none mb-3 position-relative">
+  <form class="search-box d-flex" action="{{ url_for('views.search') }}" method="get">
+    <input type="text" name="q" id="liveSearchMobile" class="form-control" placeholder="Search products..." autocomplete="off">
+    <button type="submit">
+      <i class="fa-solid fa-magnifying-glass"></i>
+    </button>
+  </form>
+  <div id="searchResultsMobile" class="list-group position-absolute w-100" style="z-index:1000; display:none;"></div>
+</div> -->
+
+        <!-- Nav Links -->
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('views.home') }}">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('views.best_deals') }}">Best Deals</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('views.about') }}">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('views.contact') }}">Contact Us</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('views.shop') }}">Shop</a></li>
+        </ul>
+
+        <!-- Call Info -->
+        <h6 class="mb-0 ms-auto">
+          <i class="fa-solid fa-phone"></i> Call To +1800090098
+        </h6>
+      </div>
+
+    </div>
+  </nav>
+</div>
+
+
+  <!-- Login / Signup Modal -->
+  <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Login or Sign Up</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+
+          <!-- Tabs -->
+          <ul class="nav nav-tabs" id="authTab">
+            <li class="nav-item">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#login">Login</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#signup">Sign Up</button>
+            </li>
+          </ul>
+
+          <!-- Tab Content -->
+          <div class="tab-content pt-3">
+
+            <!-- Login Form -->
+            <div class="tab-pane fade show active" id="login">
+              <form method="POST" action="{{ url_for('auth.login') }}">
+                {{ login_form.hidden_tag() }}
+                <div class="mb-3">
+                  {{ login_form.email.label(class="form-label") }}
+                  {{ login_form.email(class="form-control") }}
+                </div>
+                <div class="mb-3">
+                  {{ login_form.password.label(class="form-label") }}
+                  {{ login_form.password(class="form-control") }}
+                </div>
+                {{ login_form.submit(class="btn btn-success w-100") }}
+              </form>
+              <!-- Trigger button -->
+              <button type="button" class="btn btn-link" data-bs-toggle="modal" data-bs-target="#forgetPasswordModal">
+                Forgot Password?
+              </button>
+
+              <!-- Forget Password Modal -->
+              <!-- Forget Password Modal -->
+              <div id="forgetPasswordModal" class="modal fade" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content p-4">
+
+                    <div class="modal-header">
+                      <h5 class="modal-title">Reset Password</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+                      <form id="resetPasswordForm">
+                        <input type="email" name="email" class="form-control mb-2" placeholder="Enter Your Email"
+                          required>
+                        <input type="password" name="new_password" class="form-control mb-2"
+                          placeholder="Enter New Password" required>
+                        <button type="submit" class="btn btn-success w-100">Reset Password</button>
+                      </form>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
+
+            </div>
+
+            <!-- Sign Up Form -->
+            <div class="tab-pane fade" id="signup">
+              <form method="POST" action="{{ url_for('auth.signup') }}">
+                {{ signup_form.hidden_tag() }}
+                <div class="mb-3">
+                  {{ signup_form.name.label(class="form-label") }}
+                  {{ signup_form.name(class="form-control") }}
+                </div>
+                <div class="mb-3">
+                  {{ signup_form.email.label(class="form-label") }}
+                  {{ signup_form.email(class="form-control") }}
+                </div>
+                <div class="mb-3">
+                  {{ signup_form.password.label(class="form-label") }}
+                  {{ signup_form.password(class="form-control") }}
+                </div>
+                <div class="mb-3">
+                  {{ signup_form.confirm_password.label(class="form-label") }}
+                  {{ signup_form.confirm_password(class="form-control") }}
+                </div>
+                {{ signup_form.submit(class="btn btn-success w-100") }}
+              </form>
+            </div>
+
+          </div>
+
+          <hr>
+
+          <!-- Google Login -->
+          <a href="#" class="btn btn-danger w-100">
+            <i class="fab fa-google me-2"></i> Login with Google
+          </a>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  {% for category, message in messages %}
+  <div class="flash-data" data-category="{{ category }}" data-message="{{ message }}">
+  </div>
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+
+
+
+  {% block content %}{% endblock %}
+
+
+  <footer class="text-dark py-5" style="background-color: #13be1e50;">
+    <div class="container">
+      <div class="row g-4">
+
+
+        <div class="col-12 col-md-3">
+          <h5 class="fw-bold">Welcome</h5>
+          <p>Your one-stop destination for fresh groceries, organic products, and daily essentials.
+            We bring quality at affordable prices. Shop smart, live healthy — only at Green Mart!</p>
+        </div>
+
+        <div class="col-12 col-md-3">
+          <h5 class="fw-bold mb-3">Connect With Us</h5>
+          <a href="#" class="text-dark fs-4 me-3"><i class="fa-brands fa-facebook"></i></a>
+          <a href="#" class="text-dark fs-4 me-3"><i class="fa-brands fa-square-instagram"></i></a>
+          <a href="#" class="text-dark fs-4 me-3"><i class="fa-brands fa-square-twitter"></i></a>
+          <a href="#" class="text-dark fs-4"><i class="fa-brands fa-square-whatsapp"></i></a>
+        </div>
+
+        <div class="col-12 col-md-3">
+          <h5 class="fw-bold mb-3">Useful Links</h5>
+          <ul class="list-unstyled">
+            <li><a href="" class="text-dark text-decoration-none">Home</a></li>
+            <li><a href="" class="text-dark text-decoration-none">Shop</a></li>
+            <li><a href="" class="text-dark text-decoration-none">About</a></li>
+            <li><a href="" class="text-dark text-decoration-none">Contact</a></li>
+          </ul>
+        </div>
+
+        <div class="col-12 col-md-3">
+          <h5 class="fw-bold mb-3">Contact Details</h5>
+          <ul class="list-unstyled">
+            <li class="mb-2"><i class="fa-solid fa-location-dot me-2"></i>Green Mart Superstore, Ahmedabad, Gujarat</li>
+            <li class="mb-2"><i class="fa-solid fa-envelope me-2"></i>support@greenmart.com</li>
+            <li><i class="fa-solid fa-clock me-2"></i>Mon–Sun, 8:00 AM – 10:00 PM</li>
+          </ul>
+        </div>
+
+      </div>
+
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Flash Messages -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const flash = document.querySelector(".flash-data");
+
+  if (flash) {
+    const message = flash.dataset.message;
+    const category = flash.dataset.category;
+
+    let icon = "info";
+    let title = "Message";
+
+    if (category === "success") {
+      icon = "success";
+      title = "Success";
+    } else if (category === "danger") {
+      icon = "error";
+      title = "Error";
+    }
+
+    Swal.fire({
+      icon,
+      title,
+      text: message,
+      timer: 2000,
+      showConfirmButton: false
+    });
+  }
+});
+</script>
+
+<!-- Live Search -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const input = document.getElementById("liveSearch");
+  const results = document.getElementById("searchResults");
+
+  if (!input || !results) return;
+
+  input.addEventListener("keyup", function () {
+    const q = this.value.trim();
+    if (!q) {
+      results.style.display = "none";
+      return;
+    }
+
+    fetch(`/search?q=${q}`)
+      .then(res => res.json())
+      .then(data => {
+        results.innerHTML = "";
+
+        if (data.length === 0) {
+          results.innerHTML = `<div class="list-group-item text-muted">No products found</div>`;
+        } else {
+          data.forEach(p => {
+            results.innerHTML += `
+              <a href="/product/${p.id}" class="list-group-item list-group-item-action d-flex align-items-center">
+                <img src="/static/${p.image}" width="40" class="me-2 rounded">
+                <div>
+                  <strong>${p.name}</strong><br>
+                  <small>₹ ${p.price}</small>
+                </div>
+              </a>`;
+          });
+        }
+        results.style.display = "block";
+      });
+  });
+});
+</script>
+
+<!-- Forgot Password -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const modalEl = document.getElementById("forgetPasswordModal");
+  if (!modalEl) return;
+
+  const modal = new bootstrap.Modal(modalEl);
+  const form = document.getElementById("resetPasswordForm");
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const email = form.email.value;
+    const new_password = form.new_password.value;
+
+    try {
+      const res = await fetch("/forgot_password/reset_password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, new_password })
+      });
+
+      const data = await res.json();
+
+      Swal.fire({
+        icon: data.status === "ok" ? "success" : "error",
+        title: data.status === "ok" ? "Success" : "Error",
+        text: data.message,
+        timer: 2000,
+        showConfirmButton: false
+      });
+
+      if (data.status === "ok") setTimeout(() => modal.hide(), 2000);
+
+    } catch {
+      Swal.fire("Error", "Something went wrong", "error");
+    }
+  });
+});
+</script>
+
+<!-- Share Product -->
+<script>
+function shareProduct(name, id) {
+  const productUrl = `${window.location.origin}/product/${id}`;
+  const text = `🛒 Check this product on GreenMart\n\n${name}\n\n${productUrl}`;
+
+  if (navigator.share) {
+    navigator.share({ title: name, text, url: productUrl });
+  } else {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+}
+</script>
+
+
+
+</body>
+
+</html>

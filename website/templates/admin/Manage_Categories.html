@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Manage Categories{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <h2 class="mb-4">Manage Categories</h2>
+
+    <!-- Add New Category -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5>Add New Category</h5>
+            <form method="POST" action="{{ url_for('admin.add_category') }}">
+                <div class="input-group">
+                    <input type="text" name="category_name" class="form-control" placeholder="Category Name" required>
+                    <button class="btn btn-primary">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Table -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <h5>Existing Categories</h5>
+
+            {% if categories %}
+            <table class="table table-hover mt-3">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Category</th>
+                        <th>Products</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                {% for category in categories %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="fw-bold">{{ category.name }}</td>
+                    <td>
+                        <span class="badge bg-info">
+                            {{ category.products|length }}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#cat{{ category.id }}">
+                            View Products
+                        </button>
+
+                        <a href="{{ url_for('admin.edit_category', id=category.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                        <a href="{{ url_for('admin.delete_category', id=category.id) }}" class="btn btn-sm btn-danger">Delete</a>
+                    </td>
+                </tr>
+
+                <!-- Products -->
+                <tr class="collapse bg-light" id="cat{{ category.id }}">
+                    <td colspan="4">
+
+                        {% if category.products %}
+                        <table class="table table-sm table-bordered mt-2">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Product</th>
+                                    <th>Price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in category.products %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ product.name }}</td>
+                                    <td>$ {{ product.price }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p class="text-muted m-2">No products in this category</p>
+                        {% endif %}
+
+                    </td>
+                </tr>
+
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No categories found.</p>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Quick View | {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="quick-view-modal">
+    <div class="modal-content">
+        <span class="close"><a href="{{ url_for('views.home') }}">&times;</a></span>
+        <img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}" height="300px">
+        <h3>{{ product.name }}</h3>
+        <p>{{ product.description }}</p>
+        <h5 style="color:#0B7D2A">${{ product.price }}</h5>
+        <a href="#" class="btn btn-success mt-2" style="border-radius:8px;">Add To Cart</a>
+    </div>
+</div>
+{% endblock %}

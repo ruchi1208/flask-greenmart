@@ -1,0 +1,13 @@
+<div class="popup-overlay">
+  <div class="popup-box">
+    <h4>Processing Payment...</h4>
+    <div class="loader"></div>
+    <p>Please wait</p>
+  </div>
+</div>
+
+<script>
+setTimeout(()=>{
+  window.location.href="{{ url_for('views.mock_payment') }}";
+},3000);
+</script>

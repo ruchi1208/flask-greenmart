@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Dairy & Beverages | Green Mart{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('views.home') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('views.shop') }}">Shop</a></li>
+            <li class="breadcrumb-item active">Dairy & Beverages</li>
+        </ol>
+    </nav>
+
+    <h3 class="mb-4"> Dairy & Beverages</h3>
+
+    <div class="row text-center justify-content-center">
+
+        {% for id, img, name, price in [
+        ('52', image17, "Fresh Cow Milk", "$60"),
+        ('53', image18, "Buffalo Milk", "$70"),
+        ('54', image19, "Cheese", "$120"),
+        ('55', image20, "Paneer", "$110"),
+        ('56', image21, "Butter", "$90"),
+        ('57', image22, "Ghee", "$350"),
+        ('58', image23, "Yogurt / Curd", "$50"),
+        ('59', image24, "Eggs (Farm Fresh)", "$80")
+        ] %}
+
+        <div class="col-lg-3 col-md-4 col-6 mb-4 product-card">
+            <div class="product-img-box position-relative">
+                <img src="{{ img }}" class="img-fluid" style="height:200px; object-fit:cover;">
+                <div class="hover-icons">
+                    <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                    <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                        <i class="bi bi-heart"></i>
+                    </a>
+                    <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+                </div>
+            </div>
+
+            <h6 class="mt-2">{{ name }}</h6>
+            <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+
+            <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+                <input type="hidden" name="id" value="{{ id }}">
+                <input type="hidden" name="quantity" value="1">
+                <button type="submit" class="btn btn-success btn-sm">
+                    Add to Cart
+                </button>
+            </form>
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
+{% endblock %}

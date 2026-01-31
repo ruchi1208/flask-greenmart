@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Page Title -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold">Order Details</h3>
+        <a href="{{ url_for('admin.manage_orders') }}" class="btn btn-secondary btn-sm">
+            ← Back to Orders
+        </a>
+    </div>
+
+    <!-- Order Info Card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Order ID:</strong> #{{ order.id }}</p>
+                    <p><strong>Order Date:</strong> {{ order.created_at.strftime('%d %b %Y') }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p>
+                        <strong>Status:</strong>
+                        <span class="badge bg-info text-dark">
+                            {{ order.status|capitalize }}
+                        </span>
+                    </p>
+                    <p><strong>Total Amount:</strong> ${{ order.total_amount }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Info -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-bold">Customer Information</div>
+        <div class="card-body">
+            <p><strong>Name:</strong> {{ order.user.name }}</p>
+            <p><strong>Email:</strong> {{ order.user.email }}</p>
+        </div>
+    </div>
+
+    <!-- Order Items Table -->
+    <div class="card shadow-sm">
+        <div class="card-header fw-bold">Ordered Products</div>
+        <div class="card-body p-0">
+            <table class="table table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ item.product.name }}</td>
+                        <td>${{ item.price }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>${{ item.price * item.quantity }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

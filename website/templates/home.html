@@ -1,0 +1,772 @@
+{% extends "base.html" %}
+
+{% block title %}Home | Green Mart{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <div class="row g-4 justify-content-center">
+
+    <div class="col-md-8" style="background: #0B7D2A; border-radius: 25px; padding: 35px; min-height: 380px;">
+      <div class="row align-items-center">
+
+        <div class="col-md-7 col-12 mb-4 mb-md-0">
+          <h6 style="color: greenyellow;">{{ title }}</h6>
+          <h1 style="color: white; font-weight: 700;">{{ subtitle }}</h1>
+          <p style="color: white;">{{ description | safe }}</p>
+          <a href="{{ url_for('views.shop') }}" class="btn" style="background: yellow; font-weight: 600; border-radius: 8px;">Shop Now</a>
+        </div>
+        <div class="col-md-5 col-12 text-center text-md-end">
+          <img src="{{ image1 }}" class="img-fluid"
+            style="height: 320px; width: 320px; border-radius: 20px; object-fit: cover;">
+        </div>
+
+      </div>
+    </div>
+
+
+    <div class="col-md-4">
+      <div class="position-relative">
+        <img src="{{ image2 }}" class="img-fluid"
+          style="height: 440px; width: 100%; object-fit: cover; border-radius: 25px;">
+        <div class="position-absolute top-50 start-50 translate-middle text-white text-center">
+          <h3 class="fs-2 fw-bold">Organic Fruits</h3>
+          <a href="{{ url_for('views.shop') }}" class="btn" style="background: yellow; font-weight: 600; border-radius: 8px;">Shop Now</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <div class="row g-4 justify-content-center mt-3">
+
+    <div class="col-md-4">
+      <div class="position-relative">
+        <img src="{{ image3 }}" class="img-fluid"
+          style="height: 260px; width: 100%; object-fit: cover; border-radius: 25px;">
+        <div class="position-absolute top-50 start-50 translate-middle text-white text-center">
+          <h3 class="fw-bold">Healthy Juices</h3>
+          <a href="{{ url_for('views.shop') }}" class="btn" style="background: yellow; font-weight: 600; border-radius: 8px;">Shop Now</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="position-relative">
+        <img src="{{ image4 }}" class="img-fluid"
+          style="height: 260px; width: 100%; object-fit: cover; border-radius: 25px;">
+        <div class="position-absolute top-50 start-50 translate-middle text-white text-start">
+          <h3 class="fw-bold">Farm Fresh</h3>
+          <a href="#" class="btn" style="background: yellow; font-weight: 600; border-radius: 8px;">Shop Now</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="position-relative">
+        <img src="{{ image5 }}" class="img-fluid"
+          style="height: 440px; width: 100%; object-fit: cover; border-radius: 25px;">
+        <div class="position-absolute top-50 start-50 translate-middle text-white text-start">
+          <h3 class="fw-bold">Organic Species</h3>
+          <a href="#" class="btn" style="background: yellow; font-weight: 600; border-radius: 8px;">Shop Now</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+<h2 class="text-center fw-bold mb-4 mt-4" style="color:#006400;">
+  🌿 Best Sellers
+</h2>
+
+<div id="multiBannerSlider" class="carousel slide" data-bs-ride="carousel">
+  <div class="carousel-inner" data-bs-interval="1000">
+
+    <!-- SLIDE 1 -->
+    <div class="carousel-item active">
+      <div class="container py-3">
+        <div class="row text-center justify-content-center">
+          {% for id, img, title, price in [
+          (1, image6, "Cherry Tomato", "$120"),
+          (2, image7, "Organic Juice", "$150"),
+          (3, image8, "Brocoli", "$199"),
+          (4, image9, "Quinoa", "$175"),
+          (5, image10, "Grapes", "$130")
+          ] %}
+          <div class="col-lg-2 col-md-4 col-6 mb-4 product-card">
+            <div class="product-img-box">
+              <img src="{{ img }}" class="img-fluid" style="height:200px;">
+              <div class="hover-icons">
+                <!-- Quick View -->
+                <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                  <i class="bi bi-eye"></i>
+                </a>
+
+                <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                  <i class="bi bi-heart"></i>
+                </a>
+
+                <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+
+              </div>
+            </div>
+            <h6 class="mt-2">{{ title }}</h6>
+            <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+            <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+              <input type="hidden" name="id" value="{{ id }}">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-success w-100">
+                Add to Cart
+              </button>
+            </form>
+
+
+
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div> <!-- SLIDE 1 END -->
+
+
+    <!-- SLIDE 2 -->
+    <div class="carousel-item">
+      <div class="container py-3">
+        <div class="row text-center justify-content-center">
+          {% for id, img, title, price in [
+          ('6', image11, "Oats", "$210"),
+          ('7', image12, "Cow Milk", "$170"),
+          ('8', image13, "Organic Spices", "$250"),
+          ('9', image14, "Avocado", "$300"),
+          ('10', image15, "Welnuts", "$350")
+          ] %}
+          <div class="col-lg-2 col-md-4 col-6 mb-4 product-card">
+            <div class="product-img-box">
+              <img src="{{ img }}" class="img-fluid" style="height:200px;">
+              <div class="hover-icons">
+                <!-- Quick View -->
+                <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                  <i class="bi bi-eye"></i>
+                </a>
+
+                <!-- Wishlist -->
+                <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                  <i class="bi bi-heart"></i>
+                </a>
+                <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+              </div>
+            </div>
+            <h6 class="mt-2">{{ title }}</h6>
+            <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+            <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+              <input type="hidden" name="id" value="{{ id }}">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-success w-100">
+                Add to Cart
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div> <!-- SLIDE 2 END -->
+
+  </div>
+
+  <button class="carousel-control-prev custom-arrow prev" type="button" data-bs-target="#multiBannerSlider"
+    data-bs-slide="prev">
+    <i class="bi bi-chevron-left"></i>
+  </button>
+
+  <button class="carousel-control-next custom-arrow next" type="button" data-bs-target="#multiBannerSlider"
+    data-bs-slide="next">
+    <i class="bi bi-chevron-right"></i>
+  </button>
+</div>
+
+
+<div class="container mt-5">
+  <h3 class="mb-4">Today's Deals</h3>
+
+  <div class="row text-center">
+
+    <div class="col-md-4 mb-4">
+      <div class="p-4 rounded" style="background:#fffbdc;">
+        <img src="{{ image16 }}" class="img-fluid mb-3" style="height:250px; object-fit:contain;">
+        <p class="text-success fw-semibold">FARM FRESH</p>
+        <h3 class="fw-bold">Daily Uses</h3>
+        <a href="#" class="btn btn-success px-4 mt-2">Check Now</a>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+      <div class="p-4 rounded" style="background:#fff3e6;">
+        <img src="{{ image17 }}" class="img-fluid mb-3" style="height:250px; object-fit:contain;">
+        <p class="text-success fw-semibold">100% ORGANIC</p>
+        <h3 class="fw-bold">Fresh Breads</h3>
+        <a href="{{ url_for('views.shop') }}" class="btn btn-success px-4 mt-2">Check Now</a>
+      </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+      <div class="p-4 rounded" style="background:#ffe6f7;">
+        <img src="{{ image18 }}" class="img-fluid mb-3" style="height:250px; object-fit:contain;">
+        <p class="text-success fw-semibold">100% ORGANIC</p>
+        <h3 class="fw-bold">Healthy Juice</h3>
+        <a href="{{ url_for('views.shop') }}" class="btn btn-success px-4 mt-2">Check Now</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+<h2 class="text-center fw-bold mb-4 mt-4" style="color:#006400;">
+  Trending Products
+</h2>
+
+<div id="multiBannerSlider" class="carousel slide" data-bs-ride="carousel">
+  <div class="carousel-inner" data-bs-interval="2500">
+
+    <!-- SLIDE 1 -->
+    <div class="carousel-item active">
+      <div class="container py-3">
+        <div class="row text-center justify-content-center">
+          {% for id, img, title, price in [
+          ('1', image6, "Cherry Tomato", "$120"),
+          ('2', image7, "Organic Juice", "$150"),
+          ('3', image8, "Brocoli", "$199"),
+          ('4', image9, "Quinoa", "$175"),
+          ('5', image10, "Grapes", "$130")
+          ] %}
+
+          <div class="col-lg-2 col-md-4 col-6 mb-4 product-card">
+            <div class="product-img-box">
+              <img src="{{ img }}" class="img-fluid" style="height:200px;">
+              <div class="hover-icons">
+                <!-- Quick View -->
+                <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                  <i class="bi bi-eye"></i>
+                </a>
+
+                <!-- Wishlist -->
+                <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                  <i class="bi bi-heart"></i>
+                </a>
+                <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+              </div>
+            </div>
+            <h6 class="mt-2">{{ title }}</h6>
+            <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+             <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+              <input type="hidden" name="id" value="{{ id }}">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-success w-100">
+                Add to Cart
+              </button>
+            </form>
+
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div> <!-- SLIDE 1 END -->
+
+
+    <!-- SLIDE 2 -->
+    <div class="carousel-item">
+      <div class="container py-3">
+        <div class="row text-center justify-content-center">
+          {% for id, img, title, price in [
+          ('6', image11, "Oats", "$210"),
+          ('7', image12, "Cow Milk", "$170"),
+          ('8', image13, "Organic Spices", "$250"),
+          ] %}
+          <div class="col-lg-2 col-md-4 col-6 mb-4 product-card">
+            <div class="product-img-box">
+              <img src="{{ img }}" class="img-fluid" style="height:200px;">
+              <div class="hover-icons">
+                <!-- Quick View -->
+                <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                  <i class="bi bi-eye"></i>
+                </a>
+
+                <!-- Wishlist -->
+                <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                  <i class="bi bi-heart"></i>
+                </a>
+                <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+              </div>
+            </div>
+            <h6 class="mt-2">{{ title }}</h6>
+            <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+             <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+              <input type="hidden" name="id" value="{{ id }}">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-success w-100">
+                Add to Cart
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div> <!-- SLIDE 2 END -->
+
+  </div>
+
+  <button class="carousel-control-prev custom-arrow prev" type="button" data-bs-target="#multiBannerSlider"
+    data-bs-slide="prev">
+    <i class="bi bi-chevron-left"></i>
+  </button>
+
+  <button class="carousel-control-next custom-arrow next" type="button" data-bs-target="#multiBannerSlider"
+    data-bs-slide="next">
+    <i class="bi bi-chevron-right"></i>
+  </button>
+</div>
+
+
+<div class="container my-5">
+  <div class="row align-items-center bg-white shadow-sm rounded-4 p-4">
+
+    <div class="col-md-6 mb-4 mb-md-0">
+      <h3 class="fw-bold">Get 15% Discount on Your First Purchase</h3>
+      <p class="mb-3">Enjoy fresh and organic products at the best price — shop today and save big on your very first
+        order.</p>
+      <a href="{{ url_for('views.shop') }}" class="btn btn-success px-4 py-2" style="border-radius: 8px; font-weight: 500;">Shop Now</a>
+    </div>
+
+    <div class="col-md-6 text-center">
+      <img src="{{ image19 }}" class="img-fluid rounded-4" style="max-height: 300px; object-fit: cover;">
+    </div>
+
+  </div>
+</div>
+
+
+<div class="container mt-4">
+  <h4>Shop by Lifestyle</h4>
+  <div class="row text-center mt-4">
+
+    <div class="col plant box1">
+      <i class="fa-solid fa-leaf"></i>
+      <h6>Plant Based</h6>
+    </div>
+
+    <div class="col plant box2">
+      <i class="fa-solid fa-heart"></i>
+      <h6>Fresh Fruits</h6>
+    </div>
+
+    <div class="col plant box3">
+      <i class="fa-solid fa-seedling"></i>
+      <h6>Organic Veggies</h6>
+    </div>
+
+    <div class="col plant box4">
+      <i class="fa-solid fa-carrot"></i>
+      <h6>Natural Growth</h6>
+    </div>
+
+    <div class="col plant box5">
+      <i class="fa-solid fa-snowflake"></i>
+      <h6>Healthy Drinks</h6>
+    </div>
+
+  </div>
+</div>
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-6">
+      <div class="position-relative">
+        <img src="{{ image20 }}" class="img-fluid"
+          style="height: 400px; width: 100%; object-fit: cover; border-radius: 25px;">
+        <div class="position-absolute top-50 start-0 translate-middle-y text-white text-start ms-4">
+          <h3 class="fs-2 fw-bold" style="color: black;">Organic<br> Juice</h3>
+          <a href="#" class="btn" style="background: yellow; font-weight: 600; border-radius: 8px;">Shop Now</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="position-relative">
+        <img src="{{ image21 }}" class="img-fluid"
+          style="height: 400px; width: 100%; object-fit: cover; border-radius: 25px;">
+        <div class="position-absolute top-50 start-0 translate-middle-y text-white text-start ms-4">
+          <h3 class="fs-2 fw-bold" style="color: black;">Organic<br>Fruits</h3>
+          <a href="#" class="btn" style="background: yellow; font-weight: 600; border-radius: 8px;">Shop Now</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="container mt-4">
+  <ul class="nav nav-tabs" id="productTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="best-tab" data-bs-toggle="tab" data-bs-target="#best" type="button"
+        role="tab">Best Deals</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="bread-tab" data-bs-toggle="tab" data-bs-target="#bread" type="button"
+        role="tab">Bread</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="juices-tab" data-bs-toggle="tab" data-bs-target="#juices" type="button"
+        role="tab">Juices</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="organic-tab" data-bs-toggle="tab" data-bs-target="#organic" type="button"
+        role="tab">Organic</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="fruits-tab" data-bs-toggle="tab" data-bs-target="#fruits" type="button"
+        role="tab">Organic Vegetables & Fruits</button>
+    </li>
+  </ul>
+
+  <div class="tab-content mt-4 mb-4" id="productTabsContent">
+
+    <div class="tab-pane fade show active" id="best" role="tabpanel">
+      <div class="row text-center justify-content-center">
+
+        {% for id, img, title, price in [
+        ('1', image6, "Cherry Tomato", "$120"),
+        ('2', image7, "Organic Juice", "$150"),
+        ('3', image8, "Brocoli", "$199"),
+        ('4', image9, "Quinoa", "$175"),
+        ('5', image10, "Grapes", "$130")
+        ] %}
+        <div class="col-lg-2 col-md-4 col-6 mb-4 mt-4 product-card">
+          <div class="product-img-box">
+            <img src="{{ img }}" class="img-fluid" style="height:200px;">
+            <div class="hover-icons">
+              <!-- Quick View -->
+              <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                <i class="bi bi-eye"></i>
+              </a>
+
+              <!-- Wishlist -->
+              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                <i class="bi bi-heart"></i>
+              </a>
+              <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+            </div>
+          </div>
+          <h6 class="mt-2">{{ title }}</h6>
+          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+           <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+              <input type="hidden" name="id" value="{{ id }}">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-success w-100">
+                Add to Cart
+              </button>
+            </form>
+        </div>
+        {% endfor %}
+
+        {% for id, img, title, price in [
+        ('6', image11, "Oats", "$210"),
+        ('7', image12, "Cow Milk", "$170"),
+        ('8', image13, "Organic Spices", "$250"),
+        ('9', image14, "Avocado", "$300"),
+        ('10', image15, "Welnuts", "$350")
+        ] %}
+        <div class="col-lg-2 col-md-4 col-6 mb-4 product-card">
+          <div class="product-img-box">
+            <img src="{{ img }}" class="img-fluid" style="height:200px;">
+            <div class="hover-icons">
+              <!-- Quick View -->
+              <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                <i class="bi bi-eye"></i>
+              </a>
+
+              <!-- Wishlist -->
+              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                <i class="bi bi-heart"></i>
+              </a>
+              <a href="#"><i class="bi bi-arrow-repeat"></i></a>
+            </div>
+          </div>
+          <h6 class="mt-2">{{ title }}</h6>
+          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+           <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+              <input type="hidden" name="id" value="{{ id }}">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-success w-100">
+                Add to Cart
+              </button>
+            </form>
+        </div>
+        {% endfor %}
+
+      </div>
+    </div>
+
+
+    <div class="tab-pane fade" id="bread" role="tabpanel">
+      <div class="row text-center justify-content-center">
+
+        {% for id, img, title, price in [
+        ('11', image17, "Bread", "$120"),
+        ('12', image22, "White Bread", "$120"),
+        ('13', image23, "Whole Wheat Bread", "$150"),
+        ('14', image24, "Multigrain Bread", "$199")
+        ] %}
+
+        <div class="col-lg-3 col-md-4 col-6 mb-3 product-card">
+          <div class="product-img-box">
+            <img src="{{ img }}" class="img-fluid" style="height:200px;">
+            <div class="hover-icons">
+              <!-- Quick View -->
+              <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                <i class="bi bi-eye"></i>
+              </a>
+
+              <!-- Wishlist -->
+              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                <i class="bi bi-heart"></i>
+              </a>
+              <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+            </div>
+          </div>
+          <h6 class="mt-2">{{ title }}</h6>
+          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+           <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+              <input type="hidden" name="id" value="{{ id }}">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-success w-100">
+                Add to Cart
+              </button>
+            </form>
+        </div>
+
+        {% endfor %}
+
+      </div>
+    </div>
+
+
+    <div class="tab-pane fade" id="juices" role="tabpanel">
+      <div class="row text-center justify-content-center">
+
+        {% for id, img, title, price in [
+        ('15', image25, "Organic Juice", "$150"),
+        ('16', image26, "Fresh Orange Juice", "$130"),
+        ('17', image27, "Mixed Fruit Juice", "$170"),
+        ('18', image28, "Healthy Green Juice", "$180")
+        ] %}
+
+        <div class="col-lg-3 col-md-4 col-6 mb-3 product-card">
+          <div class="product-img-box">
+            <img src="{{ img }}" class="img-fluid" style="height:200px;">
+            <div class="hover-icons">
+              <!-- Quick View -->
+              <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                <i class="bi bi-eye"></i>
+              </a>
+
+              <!-- Wishlist -->
+              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                <i class="bi bi-heart"></i>
+              </a>
+              <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+            </div>
+          </div>
+          <h6 class="mt-2">{{ title }}</h6>
+          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+          <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+              <input type="hidden" name="id" value="{{ id }}">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-success w-100">
+                Add to Cart
+              </button>
+            </form>
+        </div>
+
+        {% endfor %}
+
+      </div>
+    </div>
+
+
+    <div class="tab-pane fade" id="organic" role="tabpanel">
+      <div class="row text-center justify-content-center">
+
+        {% for id, img, title, price in [
+        ('19', image29, "Almond", "$150"),
+        ('20', image30, "Organic Chia Seeds", "$130"),
+        ('21', image31, "Organic Brown Rice", "$170"),
+        ('22', image32, "Organic Jaggery Powder", "$180"),
+        ('23', image11, "Oats", "$180")
+        ] %}
+
+        <div class="col-lg-3 col-md-4 col-6 mb-3 product-card">
+          <div class="product-img-box">
+            <img src="{{ img }}" class="img-fluid" style="height:200px;">
+            <div class="hover-icons">
+              <!-- Quick View -->
+              <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                <i class="bi bi-eye"></i>
+              </a>
+
+              <!-- Wishlist -->
+              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                <i class="bi bi-heart"></i>
+              </a>
+              <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+            </div>
+          </div>
+          <h6 class="mt-2">{{ title }}</h6>
+          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+           <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+              <input type="hidden" name="id" value="{{ id }}">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-success w-100">
+                Add to Cart
+              </button>
+            </form>
+        </div>
+
+        {% endfor %}
+
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="fruits" role="tabpanel">
+      <div class="row text-center justify-content-center">
+
+        {% for id, img, title, price in [
+        ('3', image8, "Organic Broccoli", "$160"),
+        ('24', image33, "Organic Baby Spinach", "$120"),
+        ('1', image6, "Organic Cherry Tomatoes", "$140"),
+        ('25', image34, "Organic Apples", "$180"),
+        ('9', image14, "Organic Avocados", "$220"),
+        ('26', image10, "Organic Grapes", "$150")
+        ] %}
+
+        <div class="col-lg-3 col-md-4 col-6 mb-3 product-card">
+          <div class="product-img-box">
+            <img src="{{ img }}" class="img-fluid" style="height:200px;">
+            <div class="hover-icons">
+              <!-- Quick View -->
+              <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                <i class="bi bi-eye"></i>
+              </a>
+
+              <!-- Wishlist -->
+              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                <i class="bi bi-heart"></i>
+              </a>
+              <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+            </div>
+          </div>
+          <h6 class="mt-2">{{ title }}</h6>
+          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+           <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+              <input type="hidden" name="id" value="{{ id }}">
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-success w-100">
+                Add to Cart
+              </button>
+            </form>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Unique Client Testimonials Section -->
+<div class="container my-5">
+  <h3 class="text-center mb-5 fw-bold" style="color: #28a745;">What Our Clients Say</h3>
+  <div class="row g-4 justify-content-center">
+
+    <!-- Testimonial Card -->
+    <div class="col-md-6 col-lg-4">
+      <div class="testimonial-card p-4 text-center position-relative bg-white rounded-4 shadow-sm">
+        <i class="fa-solid fa-quote-left fa-2x text-success position-absolute top-0 start-50 translate-middle"></i>
+        <p class="mb-4 fst-italic" style="color: #555;">
+          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut elit tellus, luctus nec ullamcorper mattis."
+        </p>
+        <img src="{{ image35 }}" class="img-fluid rounded-circle mb-3" style="width:100px; height:100px; object-fit:cover; border: 3px solid #28a745;">
+        <h6 class="fw-bold">John Doe</h6>
+        <span class="text-muted">Entrepreneur</span>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+      <div class="testimonial-card p-4 text-center position-relative bg-white rounded-4 shadow-sm">
+        <i class="fa-solid fa-quote-left fa-2x text-success position-absolute top-0 start-50 translate-middle"></i>
+        <p class="mb-4 fst-italic" style="color: #555;">
+          "Another happy client testimonial goes here. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+        </p>
+        <img src="{{ image35 }}" class="img-fluid rounded-circle mb-3" style="width:100px; height:100px; object-fit:cover; border: 3px solid #28a745;">
+        <h6 class="fw-bold">Jane Smith</h6>
+        <span class="text-muted">Designer</span>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+      <div class="testimonial-card p-4 text-center position-relative bg-white rounded-4 shadow-sm">
+        <i class="fa-solid fa-quote-left fa-2x text-success position-absolute top-0 start-50 translate-middle"></i>
+        <p class="mb-4 fst-italic" style="color: #555;">
+          "Yet another testimonial example. Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas accumsan."
+        </p>
+        <img src="{{ image35 }}" class="img-fluid rounded-circle mb-3" style="width:100px; height:100px; object-fit:cover; border: 3px solid #28a745;">
+        <h6 class="fw-bold">Alice Brown</h6>
+        <span class="text-muted">Manager</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="container-fluid mb-4 my-5 mt-4 bg-light">
+  <div class="row text-center justify-content-center g-4">
+
+    <div class="col-6 col-md-3">
+      <i class="fa-solid fa-truck-fast fa-2x mb-2 text-success"></i>
+      <h6>Free Shipping</h6>
+      <h6 style="color: #0B7D2A;">From $350</h6>
+    </div>
+
+    <div class="col-6 col-md-3">
+      <i class="fa-solid fa-leaf fa-2x mb-2 text-success"></i>
+      <h6>Organic Products</h6>
+      <h6 style="color: #0B7D2A;">100% Natural</h6>
+    </div>
+
+    <div class="col-6 col-md-3">
+      <i class="fa-brands fa-paypal fa-2x mb-2 text-success"></i>
+      <h6>Secure Payment</h6>
+      <h6 style="color: #0B7D2A;">100% Safe</h6>
+    </div>
+
+    <div class="col-6 col-md-3">
+      <i class="fa-solid fa-headphones fa-2x mb-2 text-success"></i>
+      <h6>24/7 Support</h6>
+      <h6 style="color: #0B7D2A;">Always Here</h6>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,16 @@
+<div class="popup-overlay">
+  <div class="popup-box">
+
+    {% if status=="success" %}
+      <h2 class="success">✅ Payment Successful</h2>
+
+    {% elif status=="failed" %}
+      <h2 class="failed">❌ Payment Failed</h2>
+
+    {% else %}
+      <h2 class="pending">⏳ Payment Pending</h2>
+    {% endif %}
+
+    <button onclick="window.location.href='/'">Go Home</button>
+  </div>
+</div>

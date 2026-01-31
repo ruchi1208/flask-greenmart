@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4">✏️ Edit Product</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+            {{ form.product_name.label(class="form-label") }}
+            {{ form.product_name(class="form-control") }}
+        </div>
+
+        <div class="mb-3">
+            {{ form.current_price.label(class="form-label") }}
+            {{ form.current_price(class="form-control") }}
+        </div>
+
+        <div class="mb-3">
+            {{ form.previous_price.label(class="form-label") }}
+            {{ form.previous_price(class="form-control") }}
+        </div>
+
+        <div class="mb-3">
+            <label>Stock Quantity</label>
+            {{ form.stock(class="form-control") }}
+        </div>
+
+
+        <div class="mb-3">
+            {{ form.product_picture.label(class="form-label") }}
+            {{ form.product_picture(class="form-control") }}
+            {% if product.image %}
+            <img src="{{ url_for('static', filename=product.image) }}" width="120" class="mt-2 rounded">
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.description.label(class="form-label") }}
+            {{ form.description(class="form-control", rows="4") }}
+        </div>
+
+        <button type="submit" class="btn btn-success">Update Product</button>
+        <a href="{{ url_for('admin.manage_products') }}" class="btn btn-secondary ms-2">Cancel</a>
+    </form>
+</div>
+{% endblock %}

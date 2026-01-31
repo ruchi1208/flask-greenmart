@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}About | Green Mart{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+  <div class="row align-items-center justify-content-center">
+    <div class="col-md-6 mb-4 mb-md-0">
+      <h1 class="fw-bold">We Prefer Only Organic<br>Foods</h1>
+      <p>
+        We believe in choosing food that is pure, natural, and free from harmful chemicals.
+        Our mission is to promote a healthier lifestyle by offering products grown with care,
+        harvested responsibly, and delivered fresh. When you choose organic, you choose better
+        nutrition, better taste, and a better future for your family and the planet.
+      </p>
+    </div>
+    <div class="col-md-6 text-center">
+      <img src="{{ image1 }}" alt="Organic Foods" class="img-fluid rounded" style="max-height: 300px; width: auto;">
+    </div>
+  </div>
+</div>
+
+<section class="stats-section">
+  <div class="container">
+    <div class="stats-wrapper">
+      <div class="row text-center">
+
+        <div class="col-md-3 col-6 mb-4">
+          <h2 class="counter-number" data-target="450">0</h2>
+          <p class="counter-text">Items</p>
+        </div>
+
+        <div class="col-md-3 col-6 mb-4">
+          <h2 class="counter-number" data-target="300">0</h2>
+          <p class="counter-text">Stores</p>
+        </div>
+
+        <div class="col-md-3 col-6 mb-4">
+          <h2 class="counter-number" data-target="40000">0</h2>
+          <p class="counter-text">Happy Users</p>
+        </div>
+
+        <div class="col-md-3 col-6 mb-4">
+          <h2 class="counter-number" data-target="7889">0</h2>
+          <p class="counter-text">5 Star Reviews</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="container mt-4">
+  <h3 class="text-center fw-bold mb-4 mt-4" style="color:#006400;">Our Favorite Organic Foods</h3>
+
+  <div class="row justify-content-center align-items-start">
+
+    {% set product_columns = [
+      [('1', image6, "Cherry Tomato", "$120"), ('29', image9, "Brown Rice", "$150")],
+      [('30', image10, "Bread", "$120"), ('19', image11, "Almonds", "$150")],
+      [('31', image2, "Organic Granola Jar", "$410")],
+      [('32', image3, "Peas", "$120"), ('33', image4, "Corn", "$320")],
+      [('34', image5, "Organic Peanut Butter", "$140"), ('35', image8, "Mix Juice", "$150")]
+    ] %}
+
+    {% for column in product_columns %}
+      <div class="col-lg-2 col-md-4 col-6 text-center">
+        {% for id, img, title, price in column %}
+        <div class="product-card mb-4 d-flex flex-column h-100">
+          <div class="product-img-box position-relative">
+            <img src="{{ img }}" class="img-fluid" style="{% if title=='Organic Granola Jar' %}height:380px;{% else %}height:200px;{% endif %} object-fit:contain;">
+            <div class="product-icons">
+              <a href="{{ url_for('views.product_detail', product_id=id) }}"><i class="bi bi-eye"></i></a>
+              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}"><i class="bi bi-heart"></i></a>
+              <a href="#" onclick="shareProduct('{{ title }}', '{{ id }}')"><i class="bi bi-share-fill"></i></a>
+            </div>
+          </div>
+
+          <h6 class="mt-2">{{ title }}</h6>
+          <h6 class="mb-1 text-success">{{ price }}</h6>
+
+          <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST" class="mt-auto">
+            <input type="hidden" name="id" value="{{ id }}">
+            <input type="hidden" name="quantity" value="1">
+            <button type="submit" class="btn btn-success w-100">Add to Cart</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+
+  </div>
+</div>
+
+
+
+
+{% endblock %}

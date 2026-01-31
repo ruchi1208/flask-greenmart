@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+
+  <!-- Profile Header -->
+<div class="profile-header text-center bg-light p-4 rounded mb-4">
+
+  <!-- Avatar -->
+  <div class="avatar mx-auto mb-2">
+    {{ current_user.name[0]|upper if current_user.is_authenticated else 'U' }}
+  </div>
+
+  <!-- Name -->
+  <h5 class="mb-1">
+    {{ current_user.name if current_user.is_authenticated else 'Guest User' }}
+  </h5>
+
+  <!-- Email -->
+  <p class="text-muted small mb-0">
+    {{ current_user.email if current_user.is_authenticated else 'guest@example.com' }}
+  </p>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-4" id="profileTabs">
+    <li class="nav-item">
+      <a class="nav-link active" data-bs-toggle="tab" href="#account">Account Info</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#orders">Orders</a>
+    </li>
+    <!-- <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#wishlist">Wishlist</a>
+        </li> -->
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#settings">Settings</a>
+    </li>
+  </ul>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+
+    <!-- Account Info -->
+    <div id="account" class="tab-pane fade show active">
+      <div class="card p-3 mb-3">
+        <h5>Account Details</h5>
+        <form method="POST" action="{{ url_for('views.update_profile') }}">
+          <div class="mb-3">
+            <label class="form-label">Name</label>
+            <input type="text" name="name" value="{{ user.name }}" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" value="{{ user.email }}" class="form-control" readonly>
+          </div>
+          <button type="submit" class="btn btn-success w-10">Update Info</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Orders -->
+    <div id="orders" class="tab-pane fade">
+      {% if orders %}
+      {% for order in orders %}
+      <div class="card mb-4 shadow-sm">
+
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Order ID: {{ order.id }}</strong>
+
+          {% if order.status == "pending" %}
+          <span class="badge bg-warning text-dark">Pending</span>
+          {% elif order.status == "approved" %}
+          <span class="badge bg-primary">Approved</span>
+          {% elif order.status == "delivered" %}
+          <span class="badge bg-success">Delivered</span>
+          {% elif order.status == "cancelled" %}
+          <span class="badge bg-danger">Cancelled</span>
+          {% else %}
+          <span class="badge bg-secondary">{{ order.status }}</span>
+          {% endif %}
+
+        </div>
+
+        <div class="card-body">
+          <!-- ✅ created_at already formatted string -->
+          <p><strong>Placed on:</strong> {{ order.created_at }}</p>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in order.items %}
+              <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>${{ item.price }}</td>
+                <td>${{ item.price * item.quantity }}</td>
+              </tr>
+              {% endfor %}
+
+            </tbody>
+          </table>
+
+          <div class="d-flex justify-content-end fw-bold">
+            Total: ${{ order.total_amount }}
+          </div>
+        </div>
+
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="text-muted">You have no orders yet.</p>
+      {% endif %}
+    </div>
+
+
+
+    <!-- Wishlist
+        <div id="wishlist" class="tab-pane fade">
+            {% if wishlist %}
+            <div class="row">
+                {% for item in wishlist %}
+                <div class="col-md-3 mb-3">
+                    <div class="card p-2">
+                        <img src="{{ url_for('static', filename='images/' + item.product.image) }}" class="card-img-top">
+                        <div class="card-body p-2">
+                            <h6>{{ item.product.name }}</h6>
+                            <p>${{ item.product.price }}</p>
+                            <form action="{{ url_for('views.add_to_cart', product_id=item.product.id) }}" method="POST">
+                                <button class="btn btn-sm btn-success w-100">Move to Cart</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>Wishlist is empty.</p>
+            {% endif %}
+        </div> -->
+
+    <!-- Settings -->
+    <div id="settings" class="tab-pane fade">
+      <div class="card p-3">
+        <h5>Change Password</h5>
+        <form method="POST" action="{{ url_for('views.change_password') }}">
+          <div class="mb-3">
+            <label class="form-label">Old Password</label>
+            <input type="password" name="old_password" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">New Password</label>
+            <input type="password" name="new_password" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirm Password</label>
+            <input type="password" name="confirm_password" class="form-control">
+          </div>
+          <button type="submit" class="btn btn-success w-10">Change Password</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}

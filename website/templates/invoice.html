@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Invoice - GreenMart</title>
+<style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #f4f6f8;
+    padding: 30px;
+}
+
+.invoice-box {
+    max-width: 900px;
+    margin: auto;
+    background: #fff;
+    display: flex;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+}
+
+/* LEFT SIDEBAR */
+.sidebar {
+    width: 260px;
+    background: linear-gradient(180deg, #2ecc71, #27ae60);
+    color: #fff;
+    padding: 30px;
+}
+
+.sidebar h2 {
+    margin: 0;
+}
+
+.sidebar p {
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+/* RIGHT CONTENT */
+.content {
+    flex: 1;
+    padding: 30px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    margin: 0;
+    color: #2c3e50;
+}
+
+.badge {
+    background: #27ae60;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+}
+
+/* TABLE */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th {
+    background: #f0f3f5;
+    text-align: left;
+    padding: 12px;
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+/* TOTAL */
+.total-box {
+    margin-top: 25px;
+    text-align: right;
+}
+
+.total-box p {
+    margin: 4px 0;
+}
+
+.grand {
+    font-size: 22px;
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.footer {
+    margin-top: 30px;
+    text-align: center;
+    color: #888;
+}
+.download-btn {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 12px 22px;
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+    text-decoration: none;
+    border-radius: 30px;
+    font-weight: 600;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="invoice-box">
+
+    <!-- LEFT -->
+    <div class="sidebar">
+        <h2>GreenMart</h2>
+        <p>Fresh & Organic Store</p>
+        <hr>
+        <p><b>Invoice:</b> ORD{{ order.id }}</p>
+        <p><b>Date:</b> {{ order.created_at.strftime('%d %b %Y') }}</p>
+        <br>
+        <p><b>Customer</b></p>
+        <p>{{ user.name }}<br>{{ user.email }}</p>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="content">
+        <div class="header">
+            <h1>INVOICE</h1>
+            <span class="badge">{{ order.status }}</span>
+        </div>
+
+        <table>
+            <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total</th>
+            </tr>
+
+            {% for item in items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>${{ "%.2f"|format(item.price) }}</td>
+                <td>${{ "%.2f"|format(item.total) }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <div class="total-box">
+            <p>Subtotal: ${{ "%.2f"|format(subtotal) }}</p>
+            <p>GST (5%): ${{ "%.2f"|format(tax) }}</p>
+            <p class="grand">Grand Total: ₹{{ "%.2f"|format(grand_total) }}</p>
+        </div>
+        <div style="text-align: right;">
+    <a href="{{ url_for('views.pos_invoice', order_code='ORD' ~ order.id) }}"
+       class="download-btn">
+        ⬇ Download Invoice (PDF)
+    </a>
+</div>
+
+        
+        <div class="footer">
+            🌱 Thank you for shopping with GreenMart
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

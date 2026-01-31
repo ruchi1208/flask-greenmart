@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- RADIO CONTROLS -->
+<input type="radio" name="step" id="step-billing" checked hidden>
+<input type="radio" name="step" id="step-address" hidden>
+<input type="radio" name="step" id="step-payment" hidden>
+
+<!-- STEP INDICATOR -->
+<div class="checkout-steps mb-4">
+  <div class="step billing">
+    <div class="circle">1</div> Billing & Shipping
+  </div>
+  <div class="step address">
+    <div class="circle">2</div> Address
+  </div>
+  <div class="step payment">
+    <div class="circle">3</div> Payment
+  </div>
+</div>
+
+<div class="container content">
+  <div class="row">
+
+    <!-- LEFT FORM -->
+    <div class="col-md-8">
+      <form method="POST" id="checkoutForm">
+
+        <!-- BILLING -->
+        <div class="checkout-section billing-section">
+          <h5 class="mb-4">Billing & Shipping</h5>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label>First Name *</label>
+              <input name="first_name" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label>Last Name *</label>
+              <input name="last_name" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label>Company (optional)</label>
+            <input name="company" class="form-control">
+          </div>
+
+          <div class="mb-3">
+            <label>Phone *</label>
+            <input name="phone" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label>Email *</label>
+            <input name="email" class="form-control" required>
+          </div>
+
+          <label for="step-address" class="checkout-btn mt-3">Address</label>
+        </div>
+
+        <!-- ADDRESS -->
+        <div class="checkout-section address-section">
+          <h5 class="mb-4">Address</h5>
+          <div class="mb-3">
+            <label>Street Address *</label>
+            <input name="address" class="form-control" required>
+          </div>
+
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label>City *</label>
+              <input name="city" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label>State *</label>
+              <input name="state" class="form-control" required>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label>PIN Code *</label>
+              <input name="pin" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label>Order Notes</label>
+            <textarea name="notes" class="form-control" rows="3"></textarea>
+          </div>
+
+          <div class="btn-group d-flex justify-content-between mt-4">
+            <label for="step-billing" class="back-btn">← Back</label>
+            <label for="step-payment" class="checkout-btn">Continue to Payment</label>
+          </div>
+        </div>
+
+        <!-- PAYMENT -->
+        <div class="checkout-section payment-section">
+          <h5 class="mb-4">Payment</h5>
+          <div class="payment-option mb-3">
+            <label class="payment-card me-3">
+              <input type="radio" name="payment_method" value="cod" checked>
+              <div class="payment-content"><strong>Cash on Delivery</strong></div>
+            </label>
+            <label class="payment-card">
+              <input type="radio" name="payment_method" value="razorpay">
+              <div class="payment-content"><strong>Pay Online (Razorpay)</strong></div>
+            </label>
+          </div>
+
+          <button type="submit" class="checkout-btn">
+  Place Order
+</button>
+
+
+
+
+        </div>
+
+      </form>
+    </div>
+
+
+ <!-- ORDER SUMMARY -->
+<div class="col-md-4">
+  <div class="border p-4">
+    <h5>Order Summary</h5>
+
+    {% if cart_items %}
+      {% for item in cart_items %}
+        <div class="d-flex justify-content-between">
+          <span>{{ item.name }} × {{ item.quantity }}</span>
+          <span>${{ item.price * item.quantity }}</span>
+        </div>
+      {% endfor %}
+
+      <hr>
+
+      <div class="d-flex justify-content-between fw-bold">
+        <span>Total</span>
+        <span>${{ subtotal }}</span>
+      </div>
+
+    {% else %}
+      <p class="text-muted">Your cart is empty</p>
+    {% endif %}
+
+  </div>
+</div>
+
+
+<!-- ORDER SUCCESS POPUP -->
+<div id="orderSuccessModal" class="order-modal" style="display: none;">
+  <div class="order-modal-content">
+    <div class="success-icon">✔</div>
+    <h4>Order Placed Successfully</h4>
+    <p>Your order has been placed successfully.</p>
+    <p><strong>Order ID:</strong> <span id="orderId"></span></p>
+
+    <!-- BUTTONS -->
+    <div class="modal-actions">
+      <button class="invoice-btn" onclick="viewInvoice()">View Invoice</button>
+      <button class="checkout-btn" onclick="closeSuccessModal()">Continue Shopping</button>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+document.getElementById("checkoutForm").addEventListener("submit", function(e) {
+  e.preventDefault(); // prevent normal form submission
+
+  fetch("{{ url_for('views.checkout') }}", {
+    method: "POST",
+    body: new FormData(this)
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      // Show success popup
+      document.getElementById("orderId").innerText = data.order_id;
+      document.getElementById("orderSuccessModal").style.display = "flex";
+
+      // Optional: clear the cart UI
+      const cartItemsContainer = document.querySelector(".order-summary-items");
+      if (cartItemsContainer) cartItemsContainer.innerHTML = "";
+
+    } else {
+      alert(data.message || "Something went wrong!");
+    }
+  });
+});
+
+// Close modal function
+function closeSuccessModal() {
+  document.getElementById("orderSuccessModal").style.display = "none";
+  // Redirect to home or shopping page
+  window.location.href = "{{ url_for('views.home') }}";
+}
+</script>
+
+<script>
+function viewInvoice() {
+  const orderId = document.getElementById("orderId").innerText;
+
+  if (orderId) {
+    window.location.href = `/invoice/${orderId}`;
+  }
+}
+</script>
+
+
+
+{% endblock %}

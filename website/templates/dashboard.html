@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4">Admin Dashboard</h2>
+
+    <!-- Stats Cards -->
+    <div class="row g-4">
+
+        <!-- Total Users -->
+        <div class="col-md-3">
+            <div class="card text-center p-3 shadow-sm">
+                <h6 class="text-muted">Total Users</h6>
+                <h3 class="text-primary">{{ users }}</h3>
+            </div>
+        </div>
+
+        <!-- Total Products -->
+        <div class="col-md-3">
+            <div class="card text-center p-3 shadow-sm">
+                <h6 class="text-muted">Total Products</h6>
+                <h3 class="text-success">{{ products }}</h3>
+            </div>
+        </div>
+
+        <!-- Total Orders -->
+        <div class="col-md-3">
+            <div class="card text-center p-3 shadow-sm">
+                <h6 class="text-muted">Total Orders</h6>
+                <h3 class="text-warning">{{ orders }}</h3>
+            </div>
+        </div>
+
+       <div class="col-md-3">
+    <div class="card text-center p-3 shadow-sm">
+        <h6 class="text-muted">Categories</h6>
+
+        {% if categories %}
+            <h5 class="text-info">
+                {% for category in categories %}
+                    {{ category.name }}<br>
+                {% endfor %}
+            </h5>
+        {% else %}
+            <p class="text-danger">No categories found</p>
+        {% endif %}
+    </div>
+</div>
+
+
+
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="mt-5">
+        <h4 class="mb-3">Quick Actions</h4>
+
+        <div class="d-flex gap-3 flex-wrap">
+
+            <a href="{{ url_for('admin.manage_users') }}" class="btn btn-outline-primary">
+                <i class="fa-solid fa-user"></i> Manage Users
+            </a>
+
+            <a href="{{ url_for('admin.manage_products') }}" class="btn btn-outline-success">
+                <i class="fa-sharp fa-solid fa-box"></i> Manage Products
+            </a>
+
+            <a href="{{ url_for('admin.manage_orders') }}" class="btn btn-outline-warning">
+                <i class="fa-etch fa-solid fa-list"></i> Manage Orders
+            </a>
+
+            <a href="{{ url_for('admin.manage_categories') }}" class="btn btn-outline-info">
+                <i class="fa-duotone fa-solid fa-layer-group"></i> Manage Categories
+            </a>
+
+            <a href="{{ url_for('admin.reports') }}" class="btn btn-outline-dark">
+                <i class="fa-jelly fa-regular fa-chart-bar"></i> Reports & Analytics
+            </a>
+
+            <a href="{{ url_for('admin.settings') }}" class="btn btn-outline-secondary">
+                <i class="fa-duotone fa-solid fa-gear"></i> Settings
+            </a>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container my-5">
+    <h2 class="fw-bold mb-4">Wishlist</h2>
+
+    <table class="table table-bordered align-middle wishlist-table">
+        <thead class="table-light">
+            <tr>
+                <th>Image</th>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Add</th>
+                <th>Share</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for item in wishlist %}
+
+            <tr>
+                <td>
+                    <img src="{{ url_for('static', filename=item['image']) }}" width="60">
+                </td>
+
+                <td>
+                    <a href="{{ url_for('views.product_detail', product_id=item['id']) }}" class="text-dark">
+                        {{ item['name'] }}
+                    </a>
+                </td>
+
+                <td>${{ item['price'] }}</td>
+
+                <td><span class="text-success fw-bold">In Stock</span></td>
+
+                <td>
+    <form action="{{ url_for('views.add_to_cart', product_id=item['id']) }}" method="POST">
+
+        <button type="submit" class="btn btn-success btn-sm">
+            Move to Cart
+        </button>
+    </form>
+</td>
+
+
+                <td>
+                    <div class="dropdown">
+                        <i class="fa fa-share-alt fs-5" data-bs-toggle="dropdown"></i>
+                        <ul class="dropdown-menu p-2">
+                            <li>
+                                <a class="dropdown-item" target="_blank"
+                                    href="https://wa.me/?text={{ item['name'] }} - {{ request.url_root }}product/{{ item['id'] }}">
+                                    WhatsApp
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" target="_blank"
+                                    href="https://www.facebook.com/sharer/sharer.php?u={{ request.url_root }}product/{{ item['id'] }}">
+                                    Facebook
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" target="_blank"
+                                    href="https://twitter.com/intent/tweet?text={{ item['name'] }}&url={{ request.url_root }}product/{{ item['id'] }}">
+                                    Twitter
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </td>
+
+                <td>
+                    <form action="{{ url_for('views.remove_wishlist_item', product_id=item['id']) }}" method="POST">
+
+                        <button class="btn btn-link text-danger fs-4">&times;</button>
+                    </form>
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

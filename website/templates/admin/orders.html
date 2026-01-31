@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Manage Orders</h2>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Order ID</th>
+            <th>User</th>
+            <th>Total Amount</th>
+            <th>Status</th>
+            <th>Created At</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for order in orders %}
+        <tr>
+            <td>{{ order.id }}</td>
+            <td>{{ order.user.name }}</td>
+            <td>₹{{ order.total_amount }}</td>
+            <td>{{ order.status }}</td>
+            <td>{{ order.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
+            <td>
+                <a href="{{ url_for('admin.admin_view_order', id=order.id) }}">
+                    View
+                </a>
+
+                <a href="{{ url_for('admin.update_order_status', id=order.id) }}" class="btn btn-success btn-sm">Update
+                    Status</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

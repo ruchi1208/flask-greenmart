@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Grains & Nuts | Green Mart{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('views.home') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('views.shop') }}">Shop</a></li>
+            <li class="breadcrumb-item active">Grains & Nuts</li>
+        </ol>
+    </nav>
+
+    <h3 class="mb-4">Grains & Nuts</h3>
+
+    <div class="row text-center justify-content-center">
+
+        {% for id, img, name, price in [
+        ('68', image33, "Almonds", "$250"),
+        ('69', image34, "Cashews", "$300"),
+        ('70', image35, "Walnuts", "$350"),
+        ('71', image36, "Peanuts", "$120"),
+        ('72', image37, "Pistachios", "$400"),
+        ('73', image38, "Raisins", "$180"),
+        ('74', image39, "Chia Seeds", "$150"),
+        ('75', image40, "Flax Seeds", "$130"),
+        ('76', image41, "Oats", "$90"),
+        ('77', image42, "Quinoa", "$220")
+        ] %}
+
+        <div class="col-lg-3 col-md-4 col-6 mb-4 product-card">
+            <div class="product-img-box position-relative">
+                <img src="{{ img }}" class="img-fluid" style="height:200px; object-fit:cover;">
+                <div class="hover-icons">
+                    <a href="{{ url_for('views.product_detail', product_id=id) }}">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                    <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
+                        <i class="bi bi-heart"></i>
+                    </a>
+                    <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
+    <i class="bi bi-share-fill"></i>
+</a>
+                </div>
+            </div>
+
+            <h6 class="mt-2">{{ name }}</h6>
+            <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
+
+            <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
+                <input type="hidden" name="id" value="{{ id }}">
+                <input type="hidden" name="quantity" value="1">
+                <button type="submit" class="btn btn-success btn-sm">
+                    Add to Cart
+                </button>
+            </form>
+        </div>
+
+        {% endfor %}
+    </div>
+
+</div>
+
+{% endblock %}
