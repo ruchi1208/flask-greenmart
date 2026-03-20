@@ -219,7 +219,7 @@ def delete_product(id):
 
 @admin.route("/admin/orders/update/<int:id>", methods=["POST"])
 @admin_required
-def update_order_status(id):
+def admin_update_order_status(id):  # endpoint name
     order = Order.query.get_or_404(id)
     new_status = request.form.get("status")
     order.status = new_status
@@ -333,3 +333,48 @@ def delete_category(id):
     db.session.delete(category)
     db.session.commit()
     return redirect(url_for("admin.manage_categories"))
+
+# ============================================================
+# Pending UPI Payments
+# ============================================================
+@admin.route("/pending-payments")
+@admin_required
+def pending_payments():
+    orders = (
+        Order.query
+        .filter_by(payment_method="upi", payment_status="Pending Verification")
+        .order_by(Order.created_at.desc())
+        .all()
+    )
+    login_form = LoginForm()
+    signup_form = SignupForm()
+    return render_template(
+        "admin/pending_payments.html",
+        orders=orders,
+        login_form=login_form,
+        signup_form=signup_form,
+    )
+
+
+@admin.route("/verify-payment/<int:order_id>", methods=["POST"])
+@admin_required
+def admin_verify_payment(order_id):
+    action = request.form.get("action")
+    order  = Order.query.get_or_404(order_id)
+
+    if action == "approve":
+        order.payment_status = "Paid"
+        order.status         = "Confirmed"
+        flash(f"✅ ORD{order.id} approved!", "success")
+
+    elif action == "reject":
+        order.payment_status = "Failed"
+        order.status         = "Payment Failed"
+        for item in order.items:
+            product = Product.query.get(item.product_id)
+            if product:
+                product.stock += item.quantity
+        flash(f"❌ ORD{order.id} rejected. Stock restored.", "danger")
+
+    db.session.commit()
+    return redirect(url_for("admin.pending_payments"))

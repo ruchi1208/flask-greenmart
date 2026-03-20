@@ -970,3 +970,75 @@ input {
         display: none;
     }
 }
+/* Tracking Wrapper */
+.tracking-wrapper {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin-top: 30px;
+}
+
+/* Progress Line Background */
+.progress-line {
+  position: absolute;
+  top: 20px;
+  left: 10%;
+  width: 80%;
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  z-index: 1;
+}
+
+/* Progress Line Filled */
+.progress-step {
+  height: 100%;
+  background: #2874f0; /* Flipkart blue */
+  border-radius: 2px;
+  transition: width 0.5s ease-in-out;
+}
+
+/* Each Step */
+.tracking-step {
+  position: relative;
+  text-align: center;
+  width: 20%;
+  z-index: 2;
+}
+
+/* Step Circle */
+.tracking-step .circle {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  display: inline-block;
+  color: white;
+  font-size: 16px;
+  margin-bottom: 8px;
+  transition: background 0.3s ease;
+}
+
+/* Active Step */
+.tracking-step.active .circle {
+  background: #2874f0;
+}
+
+/* Step Label */
+.tracking-step p {
+  font-size: 12px;
+  margin: 0;
+  color: #555;
+}
+
+/* Active Step Label */
+.tracking-step.active p {
+  font-weight: 600;
+  color: #2874f0;
+}
+
+/* Icons */
+.tracking-step .circle i {
+  color: white;
+}

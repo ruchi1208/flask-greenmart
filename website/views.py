@@ -20,7 +20,10 @@ from flask_login import (
 from werkzeug.security import generate_password_hash
 from functools import wraps
 import io
-
+import os
+import base64
+import qrcode
+from datetime import datetime
 # Models
 from .models import (
     db,
@@ -32,6 +35,7 @@ from .models import (
     Order,
     OrderItem,
     Category,
+    Address
 )
 
 # Forms & Products
@@ -52,6 +56,10 @@ from reportlab.lib import colors
 
 
 views = Blueprint("views", __name__)
+
+YOUR_UPI_ID = "ronipatel3105-1@oksbi"  
+YOUR_NAME   = "GreenMart"
+UPLOAD_FOLDER = "website/static/payment_screenshots"
 
 
 def admin_required(f):
@@ -824,70 +832,84 @@ def checkout():
     login_form = LoginForm()
     signup_form = SignupForm()
 
-    # ================= LOAD CART =================
-    cart_items = Cart.query.filter_by(user_id=current_user.id).all()
+    # User ના Addresses લો
+    user_addresses = Address.query.filter_by(user_id=current_user.id).all()
+    default_address = Address.query.filter_by(
+        user_id=current_user.id, is_default=True
+    ).first()
+
+    # Cart Items
+    cart_items_db = Cart.query.filter_by(user_id=current_user.id).all()
     subtotal = 0
     checkout_items = []
 
-    for item in cart_items:
-        product = Product.query.get(item.product_id)  # 🔥 use DB Product
+    for item in cart_items_db:
+        product = Product.query.get(item.product_id)
         if product:
             total = product.price * item.quantity
             subtotal += total
-            checkout_items.append(
-                {
-                    "id": product.id,
-                    "name": product.name,
-                    "price": product.price,
-                    "quantity": item.quantity,
-                    "subtotal": total,
-                    "stock": product.stock,
-                }
-            )
+            checkout_items.append({
+                "id": product.id,
+                "name": product.name,
+                "price": product.price,
+                "quantity": item.quantity,
+                "subtotal": total,
+                "stock": product.stock,
+            })
 
-    # ================= PLACE ORDER =================
     if request.method == "POST":
         if not checkout_items:
             return jsonify({"success": False, "message": "Cart is empty"})
 
+        # Address ID અથવા નવી address
+        address_id = request.form.get("address_id")
+        if address_id:
+            addr = Address.query.get(address_id)
+        else:
+            # નવી address સીધી form માંથી
+            addr = Address(
+                user_id=current_user.id,
+                full_name=request.form.get("full_name"),
+                phone=request.form.get("phone"),
+                street=request.form.get("street"),
+                city=request.form.get("city"),
+                state=request.form.get("state"),
+                pin=request.form.get("pin"),
+            )
+            db.session.add(addr)
+            db.session.flush()
+
         try:
-            # 1️⃣ Create Order
             order = Order(
-                user_id=current_user.id, total_amount=subtotal, status="Pending"
+                user_id=current_user.id,
+                total_amount=subtotal,
+                status="Pending",
+                shipping_name=addr.full_name,
+                shipping_phone=addr.phone,
+                shipping_street=addr.street,
+                shipping_city=addr.city,
+                shipping_state=addr.state,
+                shipping_pin=addr.pin,
             )
             db.session.add(order)
-            db.session.flush()  # get order.id
+            db.session.flush()
 
-            # 2️⃣ Process each product
             for item in checkout_items:
                 product = Product.query.get(item["id"])
-
-                # ❌ Block if stock not enough
                 if product.stock < item["quantity"]:
-                    return jsonify(
-                        {
-                            "success": False,
-                            "message": f"Only {product.stock} left for {product.name}",
-                        }
-                    )
-
-                # 🔥 Reduce stock
+                    return jsonify({
+                        "success": False,
+                        "message": f"Only {product.stock} left for {product.name}"
+                    })
                 product.stock -= item["quantity"]
+                db.session.add(OrderItem(
+                    order_id=order.id,
+                    product_id=product.id,
+                    quantity=item["quantity"],
+                    price=product.price,
+                ))
 
-                # Save order item
-                db.session.add(
-                    OrderItem(
-                        order_id=order.id,
-                        product_id=product.id,
-                        quantity=item["quantity"],
-                        price=product.price,
-                    )
-                )
-
-            # 3️⃣ Clear user cart
             Cart.query.filter_by(user_id=current_user.id).delete()
-
-            # 4️⃣ Commit everything
             db.session.commit()
 
             return jsonify({"success": True, "order_id": f"ORD{order.id}"})
@@ -897,15 +919,15 @@ def checkout():
             print("Checkout Error:", e)
             return jsonify({"success": False, "message": "Checkout failed"})
 
-    # ================= PAGE LOAD =================
     return render_template(
         "checkout.html",
         cart_items=checkout_items,
         subtotal=subtotal,
+        user_addresses=user_addresses,
+        default_address=default_address,
         login_form=login_form,
         signup_form=signup_form,
     )
-
 
 # @views.route("/offers")
 # def offers():
@@ -1115,3 +1137,353 @@ def pos_invoice(order_code):
         download_name=f"POS_ORD{order.id}.pdf",
         mimetype="application/pdf"
     )
+    
+# Address List + Add
+@views.route("/addresses", methods=["GET", "POST"])
+@login_required
+def addresses():
+    if request.method == "POST":
+        # Default હટાવો પહેલા
+        if request.form.get("is_default"):
+            Address.query.filter_by(user_id=current_user.id, is_default=True).update({"is_default": False})
+
+        new_addr = Address(
+            user_id=current_user.id,
+            full_name=request.form.get("full_name"),
+            phone=request.form.get("phone"),
+            street=request.form.get("street"),
+            city=request.form.get("city"),
+            state=request.form.get("state"),
+            pin=request.form.get("pin"),
+            is_default=bool(request.form.get("is_default"))
+        )
+        db.session.add(new_addr)
+        db.session.commit()
+        flash("Address saved!", "success")
+        return redirect(url_for("views.addresses"))
+
+    all_addresses = Address.query.filter_by(user_id=current_user.id).all()
+    return render_template("addresses.html", addresses=all_addresses)
+
+
+# Address Delete
+@views.route("/delete_address/<int:addr_id>", methods=["POST"])
+@login_required
+def delete_address(addr_id):
+    addr = Address.query.filter_by(id=addr_id, user_id=current_user.id).first_or_404()
+    db.session.delete(addr)
+    db.session.commit()
+    flash("Address deleted!", "danger")
+    return redirect(url_for("views.addresses"))
+
+
+# Default Set કરો
+@views.route("/set_default_address/<int:addr_id>", methods=["POST"])
+@login_required
+def set_default_address(addr_id):
+    Address.query.filter_by(user_id=current_user.id).update({"is_default": False})
+    addr = Address.query.filter_by(id=addr_id, user_id=current_user.id).first_or_404()
+    addr.is_default = True
+    db.session.commit()
+    flash("Default address set!", "success")
+    return redirect(url_for("views.addresses"))
+
+# ============================================================
+# UPI - QR Code Generate
+# ============================================================
+@views.route("/generate_upi_qr/<int:amount>")
+@login_required
+def generate_upi_qr(amount):
+    upi_url = (
+        f"upi://pay?pa={YOUR_UPI_ID}"
+        f"&pn={YOUR_NAME}"
+        f"&am={amount}"
+        f"&cu=INR"
+        f"&tn=GreenMart-Order"
+    )
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=8,
+        border=4
+    )
+    qr.add_data(upi_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#2d6a4f", back_color="white")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    img_base64 = base64.b64encode(buffer.getvalue()).decode()
+    return jsonify({"qr": img_base64, "upi_url": upi_url, "upi_id": YOUR_UPI_ID})
+
+
+# ============================================================
+# UPI - Payment Submit (UTR + Screenshot)
+# ============================================================
+@views.route("/submit_upi_payment", methods=["POST"])
+@login_required
+def submit_upi_payment():
+    utr        = request.form.get("utr_number", "").strip()
+    screenshot = request.files.get("payment_screenshot")
+    address_id = request.form.get("address_id")
+
+    if not utr and (not screenshot or not screenshot.filename):
+        return jsonify({"success": False, "message": "UTR number અથવા Screenshot જરૂરી છે!"})
+
+    if address_id:
+        addr = Address.query.get(address_id)
+        if not addr:
+            return jsonify({"success": False, "message": "Address not found!"})
+    else:
+        class TempAddr:
+            full_name = request.form.get("full_name", "")
+            phone     = request.form.get("phone", "")
+            street    = request.form.get("street", "")
+            city      = request.form.get("city", "")
+            state     = request.form.get("state", "")
+            pin       = request.form.get("pin", "")
+        addr = TempAddr()
+
+        if request.form.get("save_address"):
+            new_addr = Address(
+                user_id=current_user.id,
+                full_name=addr.full_name,
+                phone=addr.phone,
+                street=addr.street,
+                city=addr.city,
+                state=addr.state,
+                pin=addr.pin,
+            )
+            db.session.add(new_addr)
+
+    cart_items = Cart.query.filter_by(user_id=current_user.id).all()
+    if not cart_items:
+        return jsonify({"success": False, "message": "Cart empty છે!"})
+
+    subtotal = 0
+    checkout_items = []
+    for item in cart_items:
+        product = Product.query.get(item.product_id)
+        if product:
+            subtotal += product.price * item.quantity
+            checkout_items.append({"product": product, "qty": item.quantity})
+
+    screenshot_path = None
+    if screenshot and screenshot.filename:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        ts       = int(datetime.utcnow().timestamp())
+        filename = f"pay_{current_user.id}_{ts}.jpg"
+        screenshot.save(os.path.join(UPLOAD_FOLDER, filename))
+        screenshot_path = f"payment_screenshots/{filename}"
+
+    try:
+        order = Order(
+            user_id            = current_user.id,
+            total_amount       = subtotal,
+            status             = "Processing",
+            payment_method     = "upi",
+            payment_status     = "Pending Verification",
+            utr_number         = utr or None,
+            payment_screenshot = screenshot_path,
+            shipping_name      = addr.full_name,
+            shipping_phone     = addr.phone,
+            shipping_street    = addr.street,
+            shipping_city      = addr.city,
+            shipping_state     = addr.state,
+            shipping_pin       = addr.pin,
+        )
+        db.session.add(order)
+        db.session.flush()
+
+        for ci in checkout_items:
+            product = ci["product"]
+            if product.stock < ci["qty"]:
+                db.session.rollback()
+                return jsonify({
+                    "success": False,
+                    "message": f"'{product.name}' નો stock ઓછો છે! (Available: {product.stock})"
+                })
+            product.stock -= ci["qty"]
+            db.session.add(OrderItem(
+                order_id   = order.id,
+                product_id = product.id,
+                quantity   = ci["qty"],
+                price      = product.price,
+            ))
+
+        Cart.query.filter_by(user_id=current_user.id).delete()
+        db.session.commit()
+        return jsonify({"success": True, "order_id": f"ORD{order.id}"})
+
+    except Exception as e:
+        db.session.rollback()
+        print("UPI Error:", e)
+        return jsonify({"success": False, "message": "Order save failed."})
+
+
+# ============================================================
+# Admin - Pending Payments List
+# ============================================================
+@views.route("/admin/pending-payments")
+@admin_required
+def pending_payments():
+    orders = (
+        Order.query
+        .filter_by(payment_method="upi", payment_status="Pending Verification")
+        .order_by(Order.created_at.desc())
+        .all()
+    )
+    login_form = LoginForm()
+    signup_form = SignupForm()
+    return render_template(
+        "admin/pending_payments.html",
+        orders=orders,
+        login_form=login_form,
+        signup_form=signup_form,
+    )
+
+
+# ============================================================
+# Admin - Approve / Reject UPI Payment
+# ============================================================
+@views.route("/admin/verify-payment/<int:order_id>", methods=["POST"])
+@admin_required
+def admin_verify_payment(order_id):
+    action = request.form.get("action")
+    order  = Order.query.get_or_404(order_id)
+
+    if action == "approve":
+        order.payment_status = "Paid"
+        order.status         = "Confirmed"
+        flash(f"✅ ORD{order.id} approved!", "success")
+    elif action == "reject":
+        order.payment_status = "Failed"
+        order.status         = "Payment Failed"
+        for item in order.items:
+            product = Product.query.get(item.product_id)
+            if product:
+                product.stock += item.quantity
+        flash(f"❌ ORD{order.id} rejected. Stock restored.", "danger")
+
+    db.session.commit()
+    return redirect(url_for("views.pending_payments"))
+
+# ============================================================
+# ORDER CANCELLATION SYSTEM — views.py ma add karo
+# ============================================================
+# 
+# 1) models.py ma Order model ma aa fields add karo (jો naathi):
+#
+#    cancel_reason     = db.Column(db.String(200), nullable=True)
+#    cancel_note       = db.Column(db.String(500), nullable=True)
+#    cancelled_at      = db.Column(db.DateTime, nullable=True)
+#    cancel_flagged    = db.Column(db.Boolean, default=False)
+#
+# 2) db migrate karo:
+#    flask db migrate -m "add cancel fields"
+#    flask db upgrade
+#
+# 3) views.py ma aa routes add karo:
+# ============================================================
+
+from datetime import datetime  # already imported hase
+
+CANCEL_REASONS = [
+    "Changed my mind",
+    "Ordered by mistake",
+    "Found better price elsewhere",
+    "Delivery time too long",
+    "Duplicate order",
+    "Payment issue",
+    "Other",
+]
+
+@views.route("/cancel_order/<int:order_id>", methods=["POST"])
+@login_required
+def cancel_order(order_id):
+    order = Order.query.filter_by(
+        id=order_id,
+        user_id=current_user.id
+    ).first_or_404()
+
+    # ✅ Sirf Pending / Processing orders j cancel thay
+    if order.status not in ["Pending", "Processing"]:
+        return jsonify({
+            "success": False,
+            "message": f"'{order.status}' order cancel nahi thay. Fakt Pending/Processing orders cancel thay."
+        })
+
+    reason = request.form.get("cancel_reason", "").strip()
+    note   = request.form.get("cancel_note", "").strip()
+
+    if not reason:
+        return jsonify({"success": False, "message": "Cancel reason select karo!"})
+
+    try:
+        # ✅ Stock restore karo
+        for item in order.items:
+            product = Product.query.get(item.product_id)
+            if product:
+                product.stock += item.quantity
+
+        # ✅ Order update karo
+        order.status        = "Cancelled"
+        order.cancel_reason = reason
+        order.cancel_note   = note or None
+        order.cancelled_at  = datetime.utcnow()
+        order.cancel_flagged = True   # Admin dashboard ma flag thase
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Order successfully cancelled!",
+            "order_id": f"ORD{order.id}"
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        print("Cancel Error:", e)
+        return jsonify({"success": False, "message": "Cancel failed. Please try again."})
+
+
+@views.route("/cancel_reasons")
+@login_required
+def cancel_reasons():
+    """AJAX — cancel reasons list return karo"""
+    return jsonify(CANCEL_REASONS)
+
+
+# ============================================================
+# ADMIN — Cancelled Orders List
+# ============================================================
+@views.route("/admin/cancelled-orders")
+@admin_required
+def admin_cancelled_orders():
+    orders = (
+        Order.query
+        .filter_by(status="Cancelled")
+        .order_by(Order.cancelled_at.desc())
+        .all()
+    )
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+    return render_template(
+        "admin/cancelled_orders.html",
+        orders=orders,
+        login_form=login_form,
+        signup_form=signup_form,
+    )
+
+
+# ============================================================
+# ADMIN — Clear Cancel Flag (reviewed karyu)
+# ============================================================
+@views.route("/admin/clear-cancel-flag/<int:order_id>", methods=["POST"])
+@admin_required
+def clear_cancel_flag(order_id):
+    order = Order.query.get_or_404(order_id)
+    order.cancel_flagged = False
+    db.session.commit()
+    flash(f"ORD{order.id} reviewed!", "success")
+    return redirect(url_for("views.admin_cancelled_orders"))

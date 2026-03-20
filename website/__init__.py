@@ -2,29 +2,35 @@ from flask import Flask
 from .models import db, User
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_mail import Mail
 import os
+
+mail = Mail()  # ✅ Global — auth.py ma import karso
 
 def create_app():
     app = Flask(__name__)
 
-    app.config["SECRET_KEY"] = "1234"
+    app.config["SECRET_KEY"] = "greenmart_secret_2025"
 
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
         BASE_DIR, "..", "instance", "greenmart.db"
     )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # -------------------------
-    # INIT DATABASE
-    # -------------------------
+    # ── FLASK-MAIL CONFIG ──────────────────────────────────
+    app.config["MAIL_SERVER"]         = "smtp.gmail.com"
+    app.config["MAIL_PORT"]           = 587
+    app.config["MAIL_USE_TLS"]        = True
+    app.config["MAIL_USERNAME"]       = "YOUR_GMAIL@gmail.com"      
+    app.config["MAIL_PASSWORD"]       = "abcdefghijklmnop"          
+    app.config["MAIL_DEFAULT_SENDER"] = ("GreenMart", "YOUR_GMAIL@gmail.com")
+    # ──────────────────────────────────────────────────────
+
     db.init_app(app)
     migrate = Migrate(app, db)
+    mail.init_app(app)  # ✅ Mail init
 
-    # -------------------------
-    # LOGIN MANAGER
-    # -------------------------
     login_manager = LoginManager()
     login_manager.login_view = "admin.login"
     login_manager.init_app(app)
@@ -33,9 +39,6 @@ def create_app():
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # -------------------------
-    # REGISTER BLUEPRINTS
-    # -------------------------
     from .views import views
     from .auth import auth
     from .admin import admin
@@ -44,9 +47,6 @@ def create_app():
     app.register_blueprint(auth)
     app.register_blueprint(admin)
 
-    # -------------------------
-    # CREATE DATABASE TABLES
-    # -------------------------
     with app.app_context():
         os.makedirs("instance", exist_ok=True)
         db.create_all()
