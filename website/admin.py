@@ -9,6 +9,8 @@ from .forms import SettingsForm
 from .models import db, User, Product, Order
 from .forms import ShopItemsForm, LoginForm, SignupForm
 from .models import Category
+from .emails import send_order_confirmed, send_payment_confirmed, send_order_cancelled
+
 
 admin = Blueprint("admin", __name__)
 

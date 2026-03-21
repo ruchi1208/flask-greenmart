@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Cancelled Orders{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">🚫 Cancelled Orders</h2>
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Cancel Reason</th>
+                <th>Cancelled On</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td>ORD{{ order.id }}</td>
+                <td>{{ order.user.name if order.user else "N/A" }}</td>
+                <td>
+                    {% for item in order.items %}
+                        {{ item.name }} x{{ item.quantity }}<br>
+                    {% endfor %}
+                </td>
+                <td>₹{{ order.total_amount }}</td>
+                <td>{{ order.cancel_reason or "—" }}</td>
+                <td>
+                    {% if order.cancelled_at %}
+                        {{ order.cancelled_at.strftime('%d-%m-%Y %H:%M') }}
+                    {% else %}—{% endif %}
+                </td>
+                <td>
+                    {% if order.cancel_flagged %}
+                    <form method="POST" action="{{ url_for('views.clear_cancel_flag', order_id=order.id) }}">
+                        <button type="submit" class="btn btn-sm btn-success">✅ Mark Reviewed</button>
+                    </form>
+                    {% else %}
+                        <span class="badge bg-secondary">Reviewed</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="text-center">No cancelled orders found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
