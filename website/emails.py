@@ -30,6 +30,9 @@ body{{font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f0;margin:0;paddin
 .row.tot{{font-weight:700;font-size:15px;color:#1a5c2a;}}
 .lbl{{color:#5a7a5d;}}
 .badge{{display:inline-block;padding:4px 13px;border-radius:20px;font-size:12px;font-weight:600;letter-spacing:0.4px;margin-bottom:13px;}}
+.tracking-box{{background:#e8f4fd;border:2px solid #3b82f6;border-radius:10px;padding:18px 24px;margin:16px 0;text-align:center;}}
+.tracking-box h3{{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#1e40af;}}
+.tracking-id{{font-size:26px;font-weight:800;color:#1e40af;letter-spacing:3px;font-family:monospace;}}
 .note{{background:#fffbeb;border-left:4px solid #f59e0b;padding:11px 15px;border-radius:0 6px 6px 0;font-size:13px;color:#92400e;margin-top:14px;}}
 .note-g{{background:#f0faf4;border-left:4px solid #2db96a;padding:11px 15px;border-radius:0 6px 6px 0;font-size:13px;color:#1a5c2a;margin-top:14px;}}
 .ftr{{background:#f8faf6;padding:20px 40px;text-align:center;font-size:12px;color:#8fa890;border-top:1px solid #e8f0e6;}}
@@ -48,8 +51,7 @@ p{{line-height:1.7;font-size:15px;color:#3a4a3b;margin:0 0 10px;}}
 
 
 # ─────────────────────────────────────────────
-#  ORDER ITEMS  →  OrderItem objects theke
-#  item.product.name | item.quantity | item.price
+#  ORDER ITEMS
 # ─────────────────────────────────────────────
 def _items_rows(order_items):
     rows = ""
@@ -60,7 +62,7 @@ def _items_rows(order_items):
 
 
 # ─────────────────────────────────────────────
-#  SHIPPING ADDRESS  →  Order object theke
+#  SHIPPING ADDRESS
 # ─────────────────────────────────────────────
 def _address_block(order):
     return f"""<div class="box"><h3>Delivery Address</h3>
@@ -72,14 +74,15 @@ def _address_block(order):
 
 # ═══════════════════════════════════════════════════════════
 #  1. ORDER CONFIRMED
-#     send_order_confirmed(order)
 # ═══════════════════════════════════════════════════════════
 def send_order_confirmed(order):
     pay = "Cash on Delivery" if order.payment_method == "cod" else "UPI"
+    tracking_html = f'<div class="tracking-box"><h3>🔍 Your Tracking ID</h3><div class="tracking-id">{order.tracking_id}</div><p style="margin:8px 0 0;font-size:12px;color:#1e40af;">Use this ID to track your order status</p></div>' if order.tracking_id else ""
     body = f"""
     <span class="badge" style="background:#d4f0df;color:#1a5c2a;">✅ Order Confirmed</span>
     <p>Hi <strong>{order.shipping_name}</strong>,</p>
     <p>Your order has been <strong>confirmed</strong> and is being prepared. 🌿</p>
+    {tracking_html}
     <div class="box">
       <h3>Order #{order.id} — {order.created_at.strftime('%d %b %Y, %I:%M %p')}</h3>
       {_items_rows(order.items)}
@@ -95,8 +98,6 @@ def send_order_confirmed(order):
 
 # ═══════════════════════════════════════════════════════════
 #  2. ORDER CANCELLED
-#     send_order_cancelled(order)
-#     order.cancel_reason, order.cancel_note, order.cancelled_at — models ma che j
 # ═══════════════════════════════════════════════════════════
 def send_order_cancelled(order):
     reason_html = f'<div class="row"><span class="lbl">Reason</span><span>{order.cancel_reason}</span></div>' if order.cancel_reason else ""
@@ -124,20 +125,26 @@ def send_order_cancelled(order):
 
 
 # ═══════════════════════════════════════════════════════════
-#  3. OUT FOR DELIVERY
-#     send_order_shipped(order, tracking_id, delivery_partner, estimated_time)
+#  3. OUT FOR DELIVERY  ✅ Tracking ID included
 # ═══════════════════════════════════════════════════════════
-def send_order_shipped(order, tracking_id="N/A", delivery_partner="GreenMart Delivery", estimated_time="Today"):
+def send_order_shipped(order):
+    tracking_id = order.tracking_id or "N/A"
     body = f"""
     <span class="badge" style="background:#dbeafe;color:#1e40af;">🚚 Out for Delivery</span>
     <p>Hi <strong>{order.shipping_name}</strong>,</p>
     <p>Your GreenMart order is <strong>on its way</strong> to you! 🛵</p>
+
+    <div class="tracking-box">
+      <h3>🔍 Your Tracking ID</h3>
+      <div class="tracking-id">{tracking_id}</div>
+      <p style="margin:8px 0 0;font-size:12px;color:#1e40af;">Use this ID if you need to contact support about your delivery</p>
+    </div>
+
     <div class="box">
       <h3>Delivery Details</h3>
-      <div class="row"><span class="lbl">Order ID</span><span>#{order.id}</span></div>
-      <div class="row"><span class="lbl">Tracking ID</span><span>{tracking_id}</span></div>
-      <div class="row"><span class="lbl">Delivery Partner</span><span>{delivery_partner}</span></div>
-      <div class="row"><span class="lbl">Estimated Arrival</span><span>{estimated_time}</span></div>
+      <div class="row"><span class="lbl">Order ID</span><span>ORD{order.id}</span></div>
+      <div class="row"><span class="lbl">Tracking ID</span><span><strong>{tracking_id}</strong></span></div>
+      <div class="row"><span class="lbl">Estimated Arrival</span><span>Today</span></div>
     </div>
     {_address_block(order)}
     <div class="note">Keep your phone handy — agent may call on <strong>{order.shipping_phone}</strong>.</div>
@@ -147,8 +154,7 @@ def send_order_shipped(order, tracking_id="N/A", delivery_partner="GreenMart Del
 
 
 # ═══════════════════════════════════════════════════════════
-#  4. ORDER DELIVERED / COMPLETED
-#     send_order_delivered(order)
+#  4. ORDER DELIVERED
 # ═══════════════════════════════════════════════════════════
 def send_order_delivered(order):
     body = f"""
@@ -169,7 +175,6 @@ def send_order_delivered(order):
 
 # ═══════════════════════════════════════════════════════════
 #  5. REFUND INITIATED
-#     send_refund_initiated(order, refund_amount=None, refund_method="Original Source")
 # ═══════════════════════════════════════════════════════════
 def send_refund_initiated(order, refund_amount=None, refund_method="Original Payment Source"):
     amount = refund_amount if refund_amount is not None else order.total_amount
@@ -192,7 +197,6 @@ def send_refund_initiated(order, refund_amount=None, refund_method="Original Pay
 
 # ═══════════════════════════════════════════════════════════
 #  6. REFUND COMPLETED
-#     send_refund_completed(order, refund_amount=None, refund_method="Original Source")
 # ═══════════════════════════════════════════════════════════
 def send_refund_completed(order, refund_amount=None, refund_method="Original Payment Source"):
     amount = refund_amount if refund_amount is not None else order.total_amount
@@ -213,12 +217,11 @@ def send_refund_completed(order, refund_amount=None, refund_method="Original Pay
 
 
 # ═══════════════════════════════════════════════════════════
-#  7. UPI PAYMENT CONFIRMED (Admin verify kare pachhi)
-#     send_payment_confirmed(order)
-#     order.utr_number — models ma che j
+#  7. UPI PAYMENT CONFIRMED
 # ═══════════════════════════════════════════════════════════
 def send_payment_confirmed(order):
     utr_html = f'<div class="row"><span class="lbl">UTR Number</span><span>{order.utr_number}</span></div>' if order.utr_number else ""
+    tracking_html = f'<div class="row"><span class="lbl">Tracking ID</span><span><strong>{order.tracking_id}</strong></span></div>' if order.tracking_id else ""
     body = f"""
     <span class="badge" style="background:#d4f0df;color:#1a5c2a;">💳 Payment Verified</span>
     <p>Hi <strong>{order.shipping_name}</strong>,</p>
@@ -229,6 +232,7 @@ def send_payment_confirmed(order):
       <div class="row"><span class="lbl">Amount Paid</span><span>₹{order.total_amount:.2f}</span></div>
       <div class="row"><span class="lbl">Method</span><span>UPI</span></div>
       {utr_html}
+      {tracking_html}
       <div class="row tot"><span>Status</span><span>✅ Paid</span></div>
     </div>
     <div class="note-g">Your order is now confirmed and being prepared!</div>
@@ -239,7 +243,6 @@ def send_payment_confirmed(order):
 
 # ═══════════════════════════════════════════════════════════
 #  8. ORDER ON HOLD
-#     send_order_on_hold(order, reason="...")
 # ═══════════════════════════════════════════════════════════
 def send_order_on_hold(order, reason="Pending payment verification"):
     body = f"""
@@ -259,9 +262,7 @@ def send_order_on_hold(order, reason="Pending payment verification"):
 
 
 # ═══════════════════════════════════════════════════════════
-#  9. WELCOME EMAIL  (User object)
-#     send_welcome_email(user)
-#     user.name, user.email — User model ma che j
+#  9. WELCOME EMAIL
 # ═══════════════════════════════════════════════════════════
 def send_welcome_email(user):
     body = f"""
@@ -279,9 +280,3 @@ def send_welcome_email(user):
     """
     _send("Welcome to GreenMart — Let's Get Fresh! 🌿", user.email,
           _base_email("Welcome to GreenMart!", "#2db96a", "🌿", body))
-
-# ─────────────────────────────────────────────
-#  NOTE: OTP emails (signup + reset) already
-#  handled in auth.py → send_otp_email()
-#  Yahan duplicate nahi karya.
-# ─────────────────────────────────────────────

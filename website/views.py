@@ -35,7 +35,8 @@ from .models import (
     Order,
     OrderItem,
     Category,
-    Address
+    Address,
+    generate_tracking_id,
 )
 
 # Forms & Products
@@ -175,7 +176,6 @@ def home():
             db.session.add(user)
             db.session.commit()
 
-            # ✅ WELCOME EMAIL — new user register thay tyare
             try:
                 send_welcome_email(user)
             except Exception as e:
@@ -280,6 +280,7 @@ def orders():
             "id": f"ORD{order.id}",
             "total_amount": order.total_amount,
             "status": order.status,
+            "tracking_id": order.tracking_id or "N/A",
             "created_at": order.created_at.strftime("%d-%m-%Y %H:%M"),
             "items": items,
         })
@@ -584,7 +585,6 @@ def shop():
 
 # ================================================
 # CHECKOUT  (COD)
-# ✅ EMAIL: send_order_confirmed(order)
 # ================================================
 @views.route("/checkout", methods=["GET", "POST"])
 @login_required
@@ -640,6 +640,7 @@ def checkout():
                 status         = "Pending",
                 payment_method = "cod",
                 payment_status = "Unpaid",
+                tracking_id    = generate_tracking_id(),  # ✅ AUTO TRACKING ID
                 shipping_name  = addr.full_name,
                 shipping_phone = addr.phone,
                 shipping_street= addr.street,
@@ -668,7 +669,7 @@ def checkout():
             Cart.query.filter_by(user_id=current_user.id).delete()
             db.session.commit()
 
-            # ✅ ORDER CONFIRMED EMAIL — COD order place thay tyare
+            # ✅ ORDER CONFIRMED EMAIL
             try:
                 send_order_confirmed(order)
             except Exception as e:
@@ -729,58 +730,75 @@ def invoice(order_code):
     )
 
 
+# @views.route("/invoice/pos/<order_code>")
+# @login_required
+# def pos_invoice(order_code):
+#     order_id = int(order_code.replace("ORD", ""))
+#     order    = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
+#     buffer   = io.BytesIO()
+
+#     doc = SimpleDocTemplate(
+#         buffer,
+#         pagesize=(80 * mm, 200 * mm),
+#         rightMargin=10, leftMargin=10,
+#         topMargin=10,  bottomMargin=10
+#     )
+#     styles   = getSampleStyleSheet()
+#     elements = []
+
+#     elements.append(Paragraph(
+#         "<b>GREENMART</b><br/>Fresh & Organic Store<br/>----------------------",
+#         styles["Title"]
+#     ))
+#     elements.append(Spacer(1, 6))
+#     elements.append(Paragraph(
+#         f"Invoice: ORD{order.id}<br/>Date: {order.created_at.strftime('%d-%m-%Y %H:%M')}<br/>Customer: {current_user.name}<br/>Tracking: {order.tracking_id or 'N/A'}<br/>----------------------",
+#         styles["Normal"]
+#     ))
+
+#     data     = [["Item", "Qty", "Amt"]]
+#     subtotal = 0
+#     for item in order.items:
+#         total    = item.price * item.quantity
+#         subtotal += total
+#         data.append([item.product.name[:12], str(item.quantity), f"{total:.2f}"])
+
+#     table = Table(data, colWidths=[35*mm, 10*mm, 15*mm])
+#     table.setStyle(TableStyle([
+#         ("GRID",  (0,0), (-1,-1), 0.5, colors.black),
+#         ("FONT",  (0,0), (-1, 0), "Helvetica-Bold"),
+#         ("ALIGN", (1,1), (-1,-1), "CENTER"),
+#     ]))
+#     elements.append(table)
+#     elements.append(Spacer(1, 6))
+
+#     tax   = round(subtotal * 0.05, 2)
+#     grand = subtotal + tax
+#     elements.append(Paragraph(
+#         f"----------------------<br/>Subtotal: ₹{subtotal:.2f}<br/>GST (5%): ₹{tax:.2f}<br/><b>Total: ₹{grand:.2f}</b><br/>----------------------<br/>Thank you....!!<br/>Visit Again!",
+#         styles["Normal"]
+#     ))
+
+#     doc.build(elements)
+#     buffer.seek(0)
+#     return send_file(buffer, as_attachment=True, download_name=f"POS_ORD{order.id}.pdf", mimetype="application/pdf")
+
 @views.route("/invoice/pos/<order_code>")
 @login_required
 def pos_invoice(order_code):
+    from .pos_receipt import generate_pos_receipt
+ 
     order_id = int(order_code.replace("ORD", ""))
     order    = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
-    buffer   = io.BytesIO()
-
-    doc = SimpleDocTemplate(
+ 
+    buffer = generate_pos_receipt(order, current_user.name)
+ 
+    return send_file(
         buffer,
-        pagesize=(80 * mm, 200 * mm),
-        rightMargin=10, leftMargin=10,
-        topMargin=10,  bottomMargin=10
+        as_attachment=True,
+        download_name=f"GreenMart_Receipt_ORD{order.id}.pdf",
+        mimetype="application/pdf"
     )
-    styles   = getSampleStyleSheet()
-    elements = []
-
-    elements.append(Paragraph(
-        "<b>GREENMART</b><br/>Fresh & Organic Store<br/>----------------------",
-        styles["Title"]
-    ))
-    elements.append(Spacer(1, 6))
-    elements.append(Paragraph(
-        f"Invoice: ORD{order.id}<br/>Date: {order.created_at.strftime('%d-%m-%Y %H:%M')}<br/>Customer: {current_user.name}<br/>----------------------",
-        styles["Normal"]
-    ))
-
-    data     = [["Item", "Qty", "Amt"]]
-    subtotal = 0
-    for item in order.items:
-        total    = item.price * item.quantity
-        subtotal += total
-        data.append([item.product.name[:12], str(item.quantity), f"{total:.2f}"])
-
-    table = Table(data, colWidths=[35*mm, 10*mm, 15*mm])
-    table.setStyle(TableStyle([
-        ("GRID",  (0,0), (-1,-1), 0.5, colors.black),
-        ("FONT",  (0,0), (-1, 0), "Helvetica-Bold"),
-        ("ALIGN", (1,1), (-1,-1), "CENTER"),
-    ]))
-    elements.append(table)
-    elements.append(Spacer(1, 6))
-
-    tax   = round(subtotal * 0.05, 2)
-    grand = subtotal + tax
-    elements.append(Paragraph(
-        f"----------------------<br/>Subtotal: ₹{subtotal:.2f}<br/>GST (5%): ₹{tax:.2f}<br/><b>Total: ₹{grand:.2f}</b><br/>----------------------<br/>Thank you....!!<br/>Visit Again!",
-        styles["Normal"]
-    ))
-
-    doc.build(elements)
-    buffer.seek(0)
-    return send_file(buffer, as_attachment=True, download_name=f"POS_ORD{order.id}.pdf", mimetype="application/pdf")
 
 
 # ------------------------------------------------
@@ -857,7 +875,6 @@ def generate_upi_qr(amount):
 
 # ================================================
 # UPI — Payment Submit
-# ✅ EMAIL: send_order_confirmed(order)  ← UPI order place thay tyare
 # ================================================
 @views.route("/submit_upi_payment", methods=["POST"])
 @login_required
@@ -922,6 +939,7 @@ def submit_upi_payment():
             status             = "Processing",
             payment_method     = "upi",
             payment_status     = "Pending Verification",
+            tracking_id        = generate_tracking_id(),  # ✅ AUTO TRACKING ID
             utr_number         = utr or None,
             payment_screenshot = screenshot_path,
             shipping_name      = addr.full_name,
@@ -953,8 +971,7 @@ def submit_upi_payment():
         Cart.query.filter_by(user_id=current_user.id).delete()
         db.session.commit()
 
-        # ✅ ORDER CONFIRMED EMAIL — UPI order place thay tyare
-        # Note: payment_status = "Pending Verification" — admin verify karse tyare alag email
+        # ✅ ORDER CONFIRMED EMAIL
         try:
             send_order_confirmed(order)
         except Exception as e:
@@ -987,7 +1004,6 @@ def pending_payments():
 
 # ================================================
 # ADMIN — Approve / Reject UPI Payment
-# ✅ EMAIL approve: send_payment_confirmed(order)
 # ================================================
 @views.route("/admin/verify-payment/<int:order_id>", methods=["POST"])
 @admin_required
@@ -1000,7 +1016,6 @@ def admin_verify_payment(order_id):
         order.status         = "Confirmed"
         db.session.commit()
 
-        # ✅ PAYMENT CONFIRMED EMAIL — Admin UPI approve kare tyare
         try:
             send_payment_confirmed(order)
         except Exception as e:
@@ -1023,7 +1038,6 @@ def admin_verify_payment(order_id):
 
 # ================================================
 # CANCEL ORDER
-# ✅ EMAIL: send_order_cancelled(order)
 # ================================================
 CANCEL_REASONS = [
     "Changed my mind",
@@ -1066,7 +1080,6 @@ def cancel_order(order_id):
 
         db.session.commit()
 
-        # ✅ ORDER CANCELLED EMAIL — cancel thay tyare
         try:
             send_order_cancelled(order)
         except Exception as e:

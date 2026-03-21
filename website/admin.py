@@ -9,8 +9,15 @@ from .forms import SettingsForm
 from .models import db, User, Product, Order
 from .forms import ShopItemsForm, LoginForm, SignupForm
 from .models import Category
-from .emails import send_order_confirmed, send_payment_confirmed, send_order_cancelled
 
+# ✅ EMAIL IMPORTS
+from .emails import (
+    send_order_confirmed,
+    send_order_cancelled,
+    send_payment_confirmed,
+    send_order_shipped,
+    send_order_delivered,
+)
 
 admin = Blueprint("admin", __name__)
 
@@ -137,7 +144,7 @@ def add_product():
             price=form.current_price.data,
             description=str(form.previous_price.data),
             image="uploads/" + filename,
-            stock=form.stock.data  
+            stock=form.stock.data,
         )
 
         db.session.add(product)
@@ -154,9 +161,7 @@ def add_product():
     )
 
 
-# ---------------- Manage Orders ----------------
-
-
+# ---------------- View Order ----------------
 @admin.route("/admin/orders/view/<int:id>")
 @admin_required
 def view_order(id):
@@ -171,6 +176,7 @@ def view_order(id):
     )
 
 
+# ---------------- Edit Product ----------------
 @admin.route("/admin/products/edit/<int:id>", methods=["GET", "POST"])
 @admin_required
 def edit_product(id):
@@ -184,7 +190,7 @@ def edit_product(id):
         product.name = form.product_name.data
         product.price = form.current_price.data
         product.description = str(form.previous_price.data)
-        product.stock = int(form.stock.data)  
+        product.stock = int(form.stock.data)
 
         if form.product_picture.data:
             image_file = form.product_picture.data
@@ -194,7 +200,6 @@ def edit_product(id):
             image_path = os.path.join(upload_folder, filename)
             image_file.save(image_path)
             product.image = "uploads/" + filename
-           
 
         db.session.commit()
         flash("Product updated successfully!")
@@ -209,6 +214,7 @@ def edit_product(id):
     )
 
 
+# ---------------- Delete Product ----------------
 @admin.route("/admin/products/delete/<int:id>", methods=["POST"])
 @admin_required
 def delete_product(id):
@@ -219,17 +225,33 @@ def delete_product(id):
     return redirect(url_for("admin.manage_products"))
 
 
+# ---------------- Update Order Status ----------------
 @admin.route("/admin/orders/update/<int:id>", methods=["POST"])
 @admin_required
-def admin_update_order_status(id):  # endpoint name
+def admin_update_order_status(id):
     order = Order.query.get_or_404(id)
     new_status = request.form.get("status")
     order.status = new_status
     db.session.commit()
+
+    # ✅ Email send karo based on new status
+    try:
+        if new_status == "Confirmed":
+            send_order_confirmed(order)
+        elif new_status == "Cancelled":
+            send_order_cancelled(order)
+        elif new_status in ["Shipped", "out_for_delivery"]:
+            send_order_shipped(order)
+        elif new_status == "Delivered":
+            send_order_delivered(order)
+    except Exception as e:
+        print("Email Error:", e)
+
     flash("Order status updated!")
     return redirect(url_for("admin.manage_orders"))
 
 
+# ---------------- Manage Orders ----------------
 @admin.route("/manage-orders")
 @login_required
 @admin_required
@@ -245,12 +267,12 @@ def manage_orders():
     )
 
 
+# ---------------- Reports ----------------
 @admin.route("/admin/reports")
 @admin_required
 def reports():
     login_form = LoginForm()
     signup_form = SignupForm()
-    # Example stats, you can replace with real queries
     total_orders = Order.query.count()
     total_products = Product.query.count()
     low_stock_products = Product.query.filter(Product.stock < 5).all()
@@ -265,6 +287,7 @@ def reports():
     )
 
 
+# ---------------- Manage Categories ----------------
 @admin.route("/admin/categories", methods=["GET", "POST"])
 @admin_required
 def manage_categories():
@@ -281,7 +304,7 @@ def manage_categories():
         return redirect(url_for("admin.manage_categories"))
 
     return render_template(
-        "admin/Manage_Categories.html",  # or rename the file to manage_categories.html
+        "admin/Manage_Categories.html",
         form=form,
         login_form=login_form,
         signup_form=signup_form,
@@ -289,18 +312,14 @@ def manage_categories():
     )
 
 
-
-
-
+# ---------------- Settings ----------------
 @admin.route("/admin/settings", methods=["GET", "POST"])
 @admin_required
 def settings():
     login_form = LoginForm()
     signup_form = SignupForm()
-    # You can create a Settings model to store these
     form = SettingsForm()
     if form.validate_on_submit():
-        # Save to database or config
         flash("Settings updated successfully!")
         return redirect(url_for("admin.settings"))
 
@@ -308,15 +327,15 @@ def settings():
         "admin/settings.html", login_form=login_form, signup_form=signup_form, form=form
     )
 
+
+# ---------------- Add / Edit / Delete Category ----------------
 @admin.route("/add-category", methods=["POST"])
 def add_category():
     name = request.form.get("name")
-
     if name:
         new_cat = Category(name=name)
         db.session.add(new_cat)
         db.session.commit()
-
     return redirect(url_for("admin.manage_categories"))
 
 
@@ -328,13 +347,13 @@ def edit_category(id):
     return redirect(url_for("admin.manage_categories"))
 
 
-
 @admin.route("/category/delete/<int:id>")
 def delete_category(id):
     category = Category.query.get_or_404(id)
     db.session.delete(category)
     db.session.commit()
     return redirect(url_for("admin.manage_categories"))
+
 
 # ============================================================
 # Pending UPI Payments
@@ -358,6 +377,9 @@ def pending_payments():
     )
 
 
+# ============================================================
+# Verify UPI Payment — ✅ Email included
+# ============================================================
 @admin.route("/verify-payment/<int:order_id>", methods=["POST"])
 @admin_required
 def admin_verify_payment(order_id):
@@ -367,6 +389,14 @@ def admin_verify_payment(order_id):
     if action == "approve":
         order.payment_status = "Paid"
         order.status         = "Confirmed"
+        db.session.commit()
+
+        # ✅ Payment confirmed email
+        try:
+            send_payment_confirmed(order)
+        except Exception as e:
+            print("Payment Confirmed Email Error:", e)
+
         flash(f"✅ ORD{order.id} approved!", "success")
 
     elif action == "reject":
@@ -376,7 +406,7 @@ def admin_verify_payment(order_id):
             product = Product.query.get(item.product_id)
             if product:
                 product.stock += item.quantity
+        db.session.commit()
         flash(f"❌ ORD{order.id} rejected. Stock restored.", "danger")
 
-    db.session.commit()
     return redirect(url_for("admin.pending_payments"))

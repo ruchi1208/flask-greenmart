@@ -3,8 +3,20 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from datetime import datetime, timedelta
+import random
+import string
 
 db = SQLAlchemy()
+
+
+# ─────────────────────────────────────────────
+#  AUTO GENERATE TRACKING ID
+#  Format: GM-2026-ABC123
+# ─────────────────────────────────────────────
+def generate_tracking_id():
+    year = datetime.utcnow().year
+    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    return f"GM-{year}-{code}"
 
 
 class User(UserMixin, db.Model):
@@ -41,8 +53,6 @@ class Product(db.Model):
     )
 
 
-
-
 class ContactMessage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
@@ -68,16 +78,11 @@ class Cart(db.Model):
     __tablename__ = "cart"
 
     id = db.Column(db.Integer, primary_key=True)
-
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-
     product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
-
     quantity = db.Column(db.Integer, default=1, nullable=False)
-
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Relationships (optional but recommended)
     user = db.relationship("User", backref=db.backref("cart_items", lazy=True))
     product = db.relationship("Product")
 
@@ -90,12 +95,16 @@ class Cart(db.Model):
             f"<Cart user={self.user_id} product={self.product_id} qty={self.quantity}>"
         )
 
+
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     total_amount = db.Column(db.Float)
     status = db.Column(db.String(20), default="Pending")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # ✅ TRACKING
+    tracking_id = db.Column(db.String(20), nullable=True)
 
     # Shipping
     shipping_name = db.Column(db.String(100))
@@ -106,11 +115,11 @@ class Order(db.Model):
     shipping_pin = db.Column(db.String(10))
 
     # Payment
-    payment_method = db.Column(db.String(20), default="cod")  # cod / upi
-    payment_status = db.Column(db.String(20), default="Unpaid")  # Unpaid / Pending / Paid
-    utr_number = db.Column(db.String(50), nullable=True)      # UTR number
-    payment_screenshot = db.Column(db.String(300), nullable=True)  # Screenshot path
-    
+    payment_method = db.Column(db.String(20), default="cod")
+    payment_status = db.Column(db.String(20), default="Unpaid")
+    utr_number = db.Column(db.String(50), nullable=True)
+    payment_screenshot = db.Column(db.String(300), nullable=True)
+
     cancel_reason  = db.Column(db.String(200), nullable=True)
     cancel_note    = db.Column(db.String(500), nullable=True)
     cancelled_at   = db.Column(db.DateTime,   nullable=True)
@@ -118,7 +127,6 @@ class Order(db.Model):
 
     user = db.relationship("User", backref=db.backref("orders", lazy=True))
     items = db.relationship("OrderItem", backref="order", lazy=True)
-
 
 
 class OrderItem(db.Model):
@@ -137,6 +145,7 @@ class Category(db.Model):
 
     products = db.relationship("Product", backref="category")
 
+
 class Address(db.Model):
     __tablename__ = "address"
 
@@ -152,24 +161,24 @@ class Address(db.Model):
 
     user = db.relationship("User", backref=db.backref("addresses", lazy=True))
 
+
 class OTPVerification(db.Model):
     __tablename__ = "otp_verification"
- 
+
     id         = db.Column(db.Integer,  primary_key=True)
     email      = db.Column(db.String(150), nullable=False, index=True)
     otp_code   = db.Column(db.String(6),   nullable=False)
-    purpose    = db.Column(db.String(20),  nullable=False)  # 'signup' or 'reset'
+    purpose    = db.Column(db.String(20),  nullable=False)
     created_at = db.Column(db.DateTime,    default=datetime.utcnow)
     expires_at = db.Column(db.DateTime,    nullable=False)
     is_used    = db.Column(db.Boolean,     default=False)
- 
+
     def is_valid(self):
         return not self.is_used and datetime.utcnow() < self.expires_at
- 
+
     @staticmethod
     def generate(email, purpose):
         import random
-        # Purana OTPs delete karo same email+purpose na
         OTPVerification.query.filter_by(email=email, purpose=purpose).delete()
         otp = OTPVerification(
             email      = email,
