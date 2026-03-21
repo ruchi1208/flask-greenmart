@@ -42,6 +42,14 @@ from .models import (
 from .forms import SignupForm, LoginForm
 from .products import all_products
 
+# ✅ EMAIL FUNCTIONS
+from .emails import (
+    send_order_confirmed,
+    send_order_cancelled,
+    send_payment_confirmed,
+    send_welcome_email,
+)
+
 # ReportLab (PDF / POS / Invoice)
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -57,7 +65,7 @@ from reportlab.lib import colors
 
 views = Blueprint("views", __name__)
 
-YOUR_UPI_ID = "ronipatel3105-1@oksbi"  
+YOUR_UPI_ID = "ronipatel3105-1@oksbi"
 YOUR_NAME   = "GreenMart"
 UPLOAD_FOLDER = "website/static/payment_screenshots"
 
@@ -70,7 +78,6 @@ def admin_required(f):
             flash("Admin access required!")
             return redirect(url_for("views.home"))
         return f(*args, **kwargs)
-
     return decorated_function
 
 
@@ -78,28 +85,21 @@ def customer_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
-            return redirect(url_for("views.home"))  # ✅ HOME PAGE
+            return redirect(url_for("views.home"))
         if current_user.role != "customer":
-            return redirect(url_for("views.home"))  # ✅ HOME PAGE
+            return redirect(url_for("views.home"))
         return f(*args, **kwargs)
-
     return decorated_function
 
 
 @views.route("/search")
 def search():
     q = request.args.get("q", "").strip()
-
     if not q:
         return jsonify([])
-
     products = Product.query.filter(Product.name.ilike(f"%{q}%")).limit(10).all()
-
     return jsonify(
-        [
-            {"id": p.id, "name": p.name, "price": p.price, "image": p.image}
-            for p in products
-        ]
+        [{"id": p.id, "name": p.name, "price": p.price, "image": p.image} for p in products]
     )
 
 
@@ -119,8 +119,8 @@ def update_profile():
 @views.route("/change_password", methods=["POST"])
 @login_required
 def change_password():
-    old_password = request.form.get("old_password")
-    new_password = request.form.get("new_password")
+    old_password     = request.form.get("old_password")
+    new_password     = request.form.get("new_password")
     confirm_password = request.form.get("confirm_password")
 
     if not current_user.check_password(old_password):
@@ -131,7 +131,6 @@ def change_password():
         flash("New password and confirmation do not match!", "danger")
         return redirect(url_for("views.profile"))
 
-    # Update password
     current_user.password_hash = generate_password_hash(new_password)
     db.session.commit()
     flash("Password changed successfully!", "success")
@@ -139,54 +138,52 @@ def change_password():
 
 
 # ------------------------------------------------
-# HOME + LOGIN + SIGNUP
+# HOME
 # ------------------------------------------------
 @views.route("/", methods=["GET", "POST"])
 def home():
-    
     categories = Category.query.all()
-    # 🔐 If admin already logged in → go to dashboard
+
     if current_user.is_authenticated and current_user.role == "admin":
         return redirect(url_for("admin.dashboard"))
 
     signup_form = SignupForm()
-    login_form = LoginForm()
+    login_form  = LoginForm()
 
-    # ---------------- LOGIN ----------------
     if login_form.validate_on_submit() and login_form.submit.data:
         user = User.query.filter_by(email=login_form.email.data).first()
-
         if user and user.check_password(login_form.password.data):
             login_user(user)
             flash(f"Welcome back, {user.name}!", "success")
-
-            # 🔁 Redirect based on role
             if user.role == "admin":
                 return redirect(url_for("admin.dashboard"))
             else:
                 return redirect(url_for("views.home"))
-
         flash("Invalid email or password", "danger")
 
-    # ---------------- SIGNUP ----------------
     if signup_form.validate_on_submit() and signup_form.submit.data:
         existing_user = User.query.filter_by(email=signup_form.email.data).first()
-
         if existing_user:
             flash("Email already registered", "danger")
         else:
             user = User(
                 name=signup_form.name.data,
                 email=signup_form.email.data,
-                role="customer",  # ✅ explicit
+                role="customer",
             )
             user.set_password(signup_form.password.data)
             db.session.add(user)
             db.session.commit()
+
+            # ✅ WELCOME EMAIL — new user register thay tyare
+            try:
+                send_welcome_email(user)
+            except Exception as e:
+                print("Welcome Email Error:", e)
+
             flash("Account created! Please login.", "success")
             return redirect(url_for("views.home"))
 
-    # ---------------- RENDER HOME ----------------
     return render_template(
         "home.html",
         signup_form=signup_form,
@@ -194,7 +191,6 @@ def home():
         user=current_user,
         categories=categories,
         products=all_products,
-        
         title="Farm Fresh",
         subtitle="Organic & Healthy",
         description="Donec sed mauris non quam molestie imperdiet.<br>Integer ullamcorper, purus sit amet hendrerit tincidunt",
@@ -247,18 +243,14 @@ def logout():
 
 
 # ------------------------------------------------
-# PROFILE PAGE
+# PROFILE
 # ------------------------------------------------
 @views.route("/profile")
 @login_required
 def profile():
-    login_form = LoginForm()
+    login_form  = LoginForm()
     signup_form = SignupForm()
-
-    orders = (
-        Order.query.filter_by(user_id=current_user.id).order_by(Order.id.desc()).all()
-    )
-
+    orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.id.desc()).all()
     return render_template(
         "profile.html",
         user=current_user,
@@ -271,64 +263,50 @@ def profile():
 @views.route("/orders")
 @login_required
 def orders():
-    # Fetch all orders for the current user, latest first
-    orders = (
-        Order.query.filter_by(user_id=current_user.id).order_by(Order.id.desc()).all()
-    )
-
+    orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.id.desc()).all()
     order_list = []
     for order in orders:
         items = []
         for item in order.items:
-            # you can also fetch product name dynamically if needed
             product = Product.query.get(item.product_id)
-            print("ORDER:", order)
             if product:
-                items.append(
-                    {
-                        "name": item.name,
-                        "quantity": item.quantity,
-                        "price": item.price,
-                        "subtotal": item.price * item.quantity,
-                    }
-                )
-        order_list.append(
-            {
-                "id": f"ORD{order.id}",
-                "total_amount": order.total_amount,
-                "status": order.status,
-                "created_at": order.created_at.strftime("%d-%m-%Y %H:%M"),
-                "items": items,
-            }
-        )
-
+                items.append({
+                    "name": item.name,
+                    "quantity": item.quantity,
+                    "price": item.price,
+                    "subtotal": item.price * item.quantity,
+                })
+        order_list.append({
+            "id": f"ORD{order.id}",
+            "total_amount": order.total_amount,
+            "status": order.status,
+            "created_at": order.created_at.strftime("%d-%m-%Y %H:%M"),
+            "items": items,
+        })
     return render_template("orders.html", orders=order_list)
 
 
 # ------------------------------------------------
-# QUICK VIEW PAGE
+# PRODUCT DETAIL
 # ------------------------------------------------
-
-
 @views.route("/product/<int:product_id>")
 def product_detail(product_id):
     product = next((p for p in all_products if p["id"] == product_id), None)
-    login_form = LoginForm()
-    signup_form = SignupForm()  
+    login_form  = LoginForm()
+    signup_form = SignupForm()
     if product:
         return render_template(
             "quick_view.html",
             product=product,
             login_form=login_form,
-            signup_form=signup_form, 
+            signup_form=signup_form,
         )
 
 
 @views.route("/best-deals")
 def best_deals():
     signup_form = SignupForm()
-    login_form = LoginForm()
-
+    login_form  = LoginForm()
     return render_template(
         "best_deals.html",
         signup_form=signup_form,
@@ -353,8 +331,7 @@ def best_deals():
 @views.route("/about")
 def about():
     signup_form = SignupForm()
-    login_form = LoginForm()
-
+    login_form  = LoginForm()
     return render_template(
         "about.html",
         signup_form=signup_form,
@@ -377,41 +354,31 @@ def about():
 
 @views.route("/contact", methods=["GET", "POST"])
 def contact():
-    login_form = LoginForm()
+    login_form  = LoginForm()
     signup_form = SignupForm()
-
     if request.method == "POST":
-        name = request.form.get("name")
-        email = request.form.get("email")
-        phone = request.form.get("phone")
+        name    = request.form.get("name")
+        email   = request.form.get("email")
+        phone   = request.form.get("phone")
         message = request.form.get("message")
-
         if name and email and phone and message:
-            new_message = ContactMessage(
-                name=name, email=email, phone=phone, message=message
-            )
+            new_message = ContactMessage(name=name, email=email, phone=phone, message=message)
             db.session.add(new_message)
             db.session.commit()
             flash("Your message has been sent successfully!", "success")
             return redirect(url_for("views.contact"))
         else:
             flash("Please fill out all fields.", "danger")
-
-    
-    return render_template(
-        "contact.html", login_form=login_form, signup_form=signup_form
-    )
+    return render_template("contact.html", login_form=login_form, signup_form=signup_form)
 
 
-#  Add to Wishlist
+# ------------------------------------------------
+# WISHLIST
+# ------------------------------------------------
 @views.route("/add_to_wishlist/<int:product_id>")
 @login_required
 def add_to_wishlist(product_id):
-
-    exists = Wishlist.query.filter_by(
-        user_id=current_user.id, product_id=product_id
-    ).first()
-
+    exists = Wishlist.query.filter_by(user_id=current_user.id, product_id=product_id).first()
     if not exists:
         wishlist_item = Wishlist(user_id=current_user.id, product_id=product_id)
         db.session.add(wishlist_item)
@@ -419,48 +386,36 @@ def add_to_wishlist(product_id):
         flash("Item added to Wishlist!", "success")
     else:
         flash("Item already in Wishlist!", "info")
-
     return redirect(request.referrer or url_for("views.home"))
 
 
-# 🔹 Remove Single Item From Wishlist
 @views.route("/remove_wishlist_item/<int:product_id>", methods=["POST"])
 @login_required
 def remove_wishlist_item(product_id):
-
-    item = Wishlist.query.filter_by(
-        user_id=current_user.id, product_id=product_id
-    ).first()
-
+    item = Wishlist.query.filter_by(user_id=current_user.id, product_id=product_id).first()
     if item:
         db.session.delete(item)
         db.session.commit()
         flash("Item removed!", "danger")
-
     return redirect(url_for("views.wishlist"))
 
 
-# 🔹 Clear Complete Wishlist
 @views.route("/clear_wishlist", methods=["POST"])
 @login_required
 def clear_wishlist():
-
     Wishlist.query.filter_by(user_id=current_user.id).delete()
     db.session.commit()
-
     flash("Wishlist cleared!", "danger")
     return redirect(url_for("views.wishlist"))
 
 
-# 🔹 Move to Cart
+# ------------------------------------------------
+# CART
+# ------------------------------------------------
 @views.route("/add_to_cart/<int:product_id>", methods=["POST", "GET"])
 @login_required
 def add_to_cart(product_id):
-
-    cart_item = Cart.query.filter_by(
-        user_id=current_user.id, product_id=product_id
-    ).first()
-
+    cart_item = Cart.query.filter_by(user_id=current_user.id, product_id=product_id).first()
     if cart_item:
         cart_item.quantity += 1
         flash("Quantity updated in Cart!", "info")
@@ -468,27 +423,21 @@ def add_to_cart(product_id):
         cart_item = Cart(user_id=current_user.id, product_id=product_id, quantity=1)
         db.session.add(cart_item)
         flash("Item added to Cart!", "success")
-
     db.session.commit()
     return redirect(request.referrer or url_for("views.shop"))
 
 
-# 🔹 Wishlist Page
 @views.route("/wishlist")
 @login_required
 def wishlist():
-
-    login_form = LoginForm()
+    login_form  = LoginForm()
     signup_form = SignupForm()
-
     wishlist_items = Wishlist.query.filter_by(user_id=current_user.id).all()
-
     products = []
     for item in wishlist_items:
         product = next((p for p in all_products if p["id"] == item.product_id), None)
         if product:
             products.append(product)
-
     return render_template(
         "wishlist.html",
         wishlist=products,
@@ -500,15 +449,11 @@ def wishlist():
 @views.route("/cart")
 @login_required
 def cart():
-
-    login_form = LoginForm()
+    login_form  = LoginForm()
     signup_form = SignupForm()
-
-    cart_items = Cart.query.filter_by(user_id=current_user.id).all()
-
-    products = []
+    cart_items  = Cart.query.filter_by(user_id=current_user.id).all()
+    products    = []
     total_price = 0
-
     for item in cart_items:
         product = next((p for p in all_products if p["id"] == item.product_id), None)
         if product:
@@ -516,7 +461,6 @@ def cart():
             product["subtotal"] = product["price"] * item.quantity
             total_price += product["subtotal"]
             products.append(product)
-
     return render_template(
         "cart.html",
         cart=products,
@@ -529,11 +473,7 @@ def cart():
 @views.route("/update_cart/<int:product_id>/<string:action>", methods=["POST"])
 @login_required
 def update_cart(product_id, action):
-
-    cart_item = Cart.query.filter_by(
-        user_id=current_user.id, product_id=product_id
-    ).first()
-
+    cart_item = Cart.query.filter_by(user_id=current_user.id, product_id=product_id).first()
     if cart_item:
         if action == "increase":
             cart_item.quantity += 1
@@ -541,19 +481,15 @@ def update_cart(product_id, action):
             cart_item.quantity -= 1
             if cart_item.quantity <= 0:
                 db.session.delete(cart_item)
-
         db.session.commit()
-
     return redirect(url_for("views.cart"))
 
 
 @views.route("/clear_cart", methods=["POST"])
 @login_required
 def clear_cart():
-
     Cart.query.filter_by(user_id=current_user.id).delete()
     db.session.commit()
-
     flash("Cart cleared!", "danger")
     return redirect(url_for("views.cart"))
 
@@ -561,24 +497,23 @@ def clear_cart():
 @views.route("/remove_cart_item/<int:product_id>", methods=["POST"])
 @login_required
 def remove_cart_item(product_id):
-
     item = Cart.query.filter_by(user_id=current_user.id, product_id=product_id).first()
-
     if item:
         db.session.delete(item)
         db.session.commit()
         flash("Item removed from Cart!", "danger")
-
     return redirect(url_for("views.cart"))
 
 
+# ------------------------------------------------
+# SHOP
+# ------------------------------------------------
 @views.route("/shop")
 @login_required
 @customer_required
 def shop():
     signup_form = SignupForm()
-    login_form = LoginForm()
-
+    login_form  = LoginForm()
     return render_template(
         "shop.html",
         signup_form=signup_form,
@@ -647,200 +582,21 @@ def shop():
     )
 
 
-# @views.route("/checkout", methods=["GET", "POST"])
-# @login_required
-# def checkout():
-#     login_form = LoginForm()
-#     signup_form = SignupForm()
-
-#     # ================= CALCULATE CART =================
-#     cart_items = Cart.query.filter_by(user_id=current_user.id).all()
-#     subtotal = 0
-#     checkout_items = []
-
-#     for item in cart_items:
-#         # Use `all_products` to get product details
-#         product = next((p for p in all_products if p["id"] == item.product_id), None)
-#         if product:
-#             total = product["price"] * item.quantity
-#             subtotal += total
-#             checkout_items.append({
-#                 "id": product["id"],
-#                 "name": product["name"],
-#                 "price": product["price"],
-#                 "quantity": item.quantity,
-#                 "subtotal": total,
-#             })
-
-#     # ================= POST =================
-#     if request.method == "POST":
-#         if not checkout_items:
-#             # Safety check: no valid items
-#             return redirect(url_for("views.cart"))
-
-#         payment_method = request.form.get("payment_method")  # optional field
-
-#         try:
-#             # 🔹 CREATE ORDER (flush first to get ID without commit)
-#             order = Order(
-#                 user_id=current_user.id,
-#                 total_amount=subtotal,
-#                 status="success"  # or "pending" if payment is online
-#             )
-#             db.session.add(order)
-#             db.session.flush()  # generates order.id
-
-#             # 🔹 ADD ORDER ITEMS
-#             for item in checkout_items:
-#                 db.session.add(OrderItem(
-#                     order_id=order.id,
-#                     product_id=item["id"],
-#                     quantity=item["quantity"],
-#                     price=item["price"]
-#                 ))
-
-#             # 🔹 CLEAR CART
-#             Cart.query.filter_by(user_id=current_user.id).delete(synchronize_session=False)
-
-#             # 🔹 FINAL COMMIT
-#             db.session.commit()
-
-#             # 🔹 Redirect GET to reload page & show empty cart
-#             return redirect(url_for("views.checkout"))
-
-#         except Exception as e:
-#             db.session.rollback()
-#             print("Checkout Error:", e)
-#             return redirect(url_for("views.checkout"))
-
-#     # ================= GET =================
-#     return render_template(
-#         "checkout.html",
-#         cart_items=checkout_items,
-#         subtotal=subtotal,
-#         login_form=login_form,
-#         signup_form=signup_form
-#     )
-
-# @views.route("/checkout", methods=["GET", "POST"])
-# @login_required
-# def checkout():
-#     login_form = LoginForm()
-#     signup_form = SignupForm()
-
-#     # ================= CALCULATE CART =================
-#     cart_items = Cart.query.filter_by(user_id=current_user.id).all()
-#     subtotal = 0
-#     checkout_items = []
-
-#     for item in cart_items:
-#         product = next((p for p in all_products if p["id"] == item.product_id), None)
-#         if product:
-#             total = product["price"] * item.quantity
-#             subtotal += total
-#             checkout_items.append({
-#                 "id": product["id"],
-#                 "name": product["name"],
-#                 "price": product["price"],
-#                 "quantity": item.quantity,
-#                 "subtotal": total,
-#             })
-
-#     # ================= POST =================
-#     if request.method == "POST":
-#         if not checkout_items:
-#             return jsonify({"success": False, "message": "Cart is empty"})
-
-#         payment_method = request.form.get("payment_method")
-
-#         try:
-#             # CREATE ORDER
-#             order = Order(
-#                 user_id=current_user.id,
-#                 total_amount=subtotal,
-#                 status="success"
-#             )
-#             db.session.add(order)
-#             db.session.flush()  # get order.id
-
-#             # ADD ORDER ITEMS
-#             for item in checkout_items:
-#                 db.session.add(OrderItem(
-#                     order_id=order.id,
-#                     product_id=item["id"],
-#                     quantity=item["quantity"],
-#                     price=item["price"]
-#                 ))
-
-#             # CLEAR CART
-#             Cart.query.filter_by(user_id=current_user.id).delete(synchronize_session=False)
-
-#             # FINAL COMMIT
-#             db.session.commit()
-
-#             # ✅ RETURN JSON for AJAX
-#             return jsonify({
-#                 "success": True,
-#                 "order_id": f"ORD{order.id}"  # display-friendly order ID
-#             })
-
-#         except Exception as e:
-#             db.session.rollback()
-#             print("Checkout Error:", e)
-#             return jsonify({"success": False, "message": "Something went wrong"})
-
-#     # ================= GET =================
-#     return render_template(
-#         "checkout.html",
-#         cart_items=checkout_items,
-#         subtotal=subtotal,
-#         login_form=login_form,
-#         signup_form=signup_form
-#     )
-
-# @views.route("/orders")
-# @login_required
-# def order_history():
-#     login_form = LoginForm()
-#     signup_form = SignupForm()
-
-#     user_orders = Order.query.filter_by(
-#         user_id=current_user.id
-#     ).order_by(Order.id.desc()).all()
-
-#     orders_list = []
-#     for order in user_orders:
-#         orders_list.append({
-#             "id": order.id,
-#             "status": order.status,
-#             "total": order.total_amount,   # ✅ MATCH TEMPLATE
-#             "items_count": sum(item.quantity for item in order.items)
-#         })
-
-#     return render_template(
-#         "profile.html",
-#         orders=orders_list,
-#         user=current_user,
-#         login_form=login_form,
-#         signup_form=signup_form
-#     )
-
-
+# ================================================
+# CHECKOUT  (COD)
+# ✅ EMAIL: send_order_confirmed(order)
+# ================================================
 @views.route("/checkout", methods=["GET", "POST"])
 @login_required
 def checkout():
-    login_form = LoginForm()
+    login_form  = LoginForm()
     signup_form = SignupForm()
 
-    # User ના Addresses લો
-    user_addresses = Address.query.filter_by(user_id=current_user.id).all()
-    default_address = Address.query.filter_by(
-        user_id=current_user.id, is_default=True
-    ).first()
+    user_addresses  = Address.query.filter_by(user_id=current_user.id).all()
+    default_address = Address.query.filter_by(user_id=current_user.id, is_default=True).first()
 
-    # Cart Items
-    cart_items_db = Cart.query.filter_by(user_id=current_user.id).all()
-    subtotal = 0
+    cart_items_db  = Cart.query.filter_by(user_id=current_user.id).all()
+    subtotal       = 0
     checkout_items = []
 
     for item in cart_items_db:
@@ -849,24 +605,22 @@ def checkout():
             total = product.price * item.quantity
             subtotal += total
             checkout_items.append({
-                "id": product.id,
-                "name": product.name,
-                "price": product.price,
+                "id":       product.id,
+                "name":     product.name,
+                "price":    product.price,
                 "quantity": item.quantity,
                 "subtotal": total,
-                "stock": product.stock,
+                "stock":    product.stock,
             })
 
     if request.method == "POST":
         if not checkout_items:
             return jsonify({"success": False, "message": "Cart is empty"})
 
-        # Address ID અથવા નવી address
         address_id = request.form.get("address_id")
         if address_id:
             addr = Address.query.get(address_id)
         else:
-            # નવી address સીધી form માંથી
             addr = Address(
                 user_id=current_user.id,
                 full_name=request.form.get("full_name"),
@@ -881,15 +635,17 @@ def checkout():
 
         try:
             order = Order(
-                user_id=current_user.id,
-                total_amount=subtotal,
-                status="Pending",
-                shipping_name=addr.full_name,
-                shipping_phone=addr.phone,
-                shipping_street=addr.street,
-                shipping_city=addr.city,
-                shipping_state=addr.state,
-                shipping_pin=addr.pin,
+                user_id        = current_user.id,
+                total_amount   = subtotal,
+                status         = "Pending",
+                payment_method = "cod",
+                payment_status = "Unpaid",
+                shipping_name  = addr.full_name,
+                shipping_phone = addr.phone,
+                shipping_street= addr.street,
+                shipping_city  = addr.city,
+                shipping_state = addr.state,
+                shipping_pin   = addr.pin,
             )
             db.session.add(order)
             db.session.flush()
@@ -903,14 +659,20 @@ def checkout():
                     })
                 product.stock -= item["quantity"]
                 db.session.add(OrderItem(
-                    order_id=order.id,
-                    product_id=product.id,
-                    quantity=item["quantity"],
-                    price=product.price,
+                    order_id   = order.id,
+                    product_id = product.id,
+                    quantity   = item["quantity"],
+                    price      = product.price,
                 ))
 
             Cart.query.filter_by(user_id=current_user.id).delete()
             db.session.commit()
+
+            # ✅ ORDER CONFIRMED EMAIL — COD order place thay tyare
+            try:
+                send_order_confirmed(order)
+            except Exception as e:
+                print("Order Confirmed Email Error:", e)
 
             return jsonify({"success": True, "order_id": f"ORD{order.id}"})
 
@@ -929,110 +691,31 @@ def checkout():
         signup_form=signup_form,
     )
 
-# @views.route("/offers")
-# def offers():
-#     login_form = LoginForm()
-#     signup_form = SignupForm()
 
-#     newest = Product.query.order_by(Product.id.desc()).limit(8).all()
-#     cheapest = Product.query.order_by(Product.price.asc()).limit(8).all()
-#     combined = list({p.id: p for p in (newest + cheapest)}.values())
-
-#     return render_template(
-#         "offers.html",
-#         products=combined,
-#         user=current_user,
-#         login_form=login_form,
-#         signup_form=signup_form
-#     )
-
-@views.route("/dairy-beverages")
-def dairy_beverages():
-    login_form = LoginForm()
-    signup_form = SignupForm()
-
-    return render_template(
-        "dairy_beverages.html",
-        login_form=login_form,
-        signup_form=signup_form,
-        image17="/static/images/milk.jpg",
-        image18="/static/images/buffelo.jpg",
-        image19="/static/images/cheese.jpg",
-        image20="/static/images/paneer.jpg",
-        image21="/static/images/butter.jpg",
-        image22="/static/images/ghee.jpg",
-        image23="/static/images/curd.jpg",
-        image24="/static/images/egg.jpg"
-    )
-
-@views.route("/grains-nuts")
-def grains_nuts():
-    login_form = LoginForm()
-    signup_form = SignupForm()
-
-    return render_template(
-        "grains_nuts.html",
-        login_form=login_form,
-        signup_form=signup_form,
-
-        image33="/static/images/almonds.jpg",
-        image34="/static/images/cashew.jpg",
-        image35="/static/images/nuts.jpg",
-        image36="/static/images/peanut.jpg",
-        image37="/static/images/pistachios.jpg",
-        image38="/static/images/raisins.jpg",
-        image39="/static/images/chia.jpg",
-        image40="/static/images/flax.jpg",
-        image41="/static/images/oats.jpg",
-        image42="/static/images/quinoa.jpg"
-    )
-
-@views.route("/spices-snacks")
-def spices_snacks():
-    login_form = LoginForm()
-    signup_form = SignupForm()
-
-    return render_template(
-        "spices_snacks.html",
-        login_form=login_form,
-        signup_form=signup_form,
-
-        image43="/static/images/redchilli.jpg",
-        image44="/static/images/termeric.jpg",
-        image45="/static/images/cumin.jpg",
-        image46="/static/images/black-pepper.jpg",
-        image47="/static/images/potato-chips.jpg",
-        image48="/static/images/cookies.jpg",
-       
-    )
-
+# ------------------------------------------------
+# INVOICE
+# ------------------------------------------------
 @views.route("/invoice/<order_code>")
 @login_required
 def invoice(order_code):
-    # Convert ORD9 → 9
     order_id = int(order_code.replace("ORD", ""))
+    order    = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
 
-    order = Order.query.filter_by(
-        id=order_id,
-        user_id=current_user.id
-    ).first_or_404()
-
-    items = []
+    items    = []
     subtotal = 0
 
     for item in order.items:
-        product = Product.query.get(item.product_id)
+        product    = Product.query.get(item.product_id)
         line_total = item.price * item.quantity
-        subtotal += line_total
-
+        subtotal  += line_total
         items.append({
-            "name": product.name if product else "Product",
+            "name":     product.name if product else "Product",
             "quantity": item.quantity,
-            "price": item.price,
-            "total": line_total
+            "price":    item.price,
+            "total":    line_total
         })
 
-    tax = round(subtotal * 0.05, 2)   # 5% GST
+    tax         = round(subtotal * 0.05, 2)
     grand_total = subtotal + tax
 
     return render_template(
@@ -1050,103 +733,65 @@ def invoice(order_code):
 @login_required
 def pos_invoice(order_code):
     order_id = int(order_code.replace("ORD", ""))
+    order    = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
+    buffer   = io.BytesIO()
 
-    order = Order.query.filter_by(
-        id=order_id,
-        user_id=current_user.id
-    ).first_or_404()
-
-    buffer = io.BytesIO()
-
-    # 🧾 POS size (80mm width)
     doc = SimpleDocTemplate(
         buffer,
         pagesize=(80 * mm, 200 * mm),
-        rightMargin=10,
-        leftMargin=10,
-        topMargin=10,
-        bottomMargin=10
+        rightMargin=10, leftMargin=10,
+        topMargin=10,  bottomMargin=10
     )
-
-    styles = getSampleStyleSheet()
+    styles   = getSampleStyleSheet()
     elements = []
 
-    # 🟢 STORE HEADER
     elements.append(Paragraph(
         "<b>GREENMART</b><br/>Fresh & Organic Store<br/>----------------------",
         styles["Title"]
     ))
-
     elements.append(Spacer(1, 6))
-
     elements.append(Paragraph(
-        f"""
-        Invoice: ORD{order.id}<br/>
-        Date: {order.created_at.strftime('%d-%m-%Y %H:%M')}<br/>
-        Customer: {current_user.name}
-        <br/>----------------------
-        """,
+        f"Invoice: ORD{order.id}<br/>Date: {order.created_at.strftime('%d-%m-%Y %H:%M')}<br/>Customer: {current_user.name}<br/>----------------------",
         styles["Normal"]
     ))
 
-    # 🧾 ITEMS
-    data = [["Item", "Qty", "Amt"]]
+    data     = [["Item", "Qty", "Amt"]]
     subtotal = 0
-
     for item in order.items:
-        total = item.price * item.quantity
+        total    = item.price * item.quantity
         subtotal += total
-        data.append([
-            item.product.name[:12],
-            str(item.quantity),
-            f"{total:.2f}"
-        ])
+        data.append([item.product.name[:12], str(item.quantity), f"{total:.2f}"])
 
     table = Table(data, colWidths=[35*mm, 10*mm, 15*mm])
     table.setStyle(TableStyle([
-        ("GRID", (0,0), (-1,-1), 0.5, colors.black),
-        ("FONT", (0,0), (-1,0), "Helvetica-Bold"),
+        ("GRID",  (0,0), (-1,-1), 0.5, colors.black),
+        ("FONT",  (0,0), (-1, 0), "Helvetica-Bold"),
         ("ALIGN", (1,1), (-1,-1), "CENTER"),
     ]))
-
     elements.append(table)
     elements.append(Spacer(1, 6))
 
-    tax = round(subtotal * 0.05, 2)
+    tax   = round(subtotal * 0.05, 2)
     grand = subtotal + tax
-
     elements.append(Paragraph(
-        f"""
-        ----------------------<br/>
-        Subtotal: ${subtotal:.2f}<br/>
-        GST (5%): ${tax:.2f}<br/>
-        <b>Total: ${grand:.2f}</b><br/>
-        ----------------------<br/>
-        Thank you....!!<br/>
-        Visit Again!
-        """,
+        f"----------------------<br/>Subtotal: ₹{subtotal:.2f}<br/>GST (5%): ₹{tax:.2f}<br/><b>Total: ₹{grand:.2f}</b><br/>----------------------<br/>Thank you....!!<br/>Visit Again!",
         styles["Normal"]
     ))
 
     doc.build(elements)
     buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name=f"POS_ORD{order.id}.pdf", mimetype="application/pdf")
 
-    return send_file(
-        buffer,
-        as_attachment=True,
-        download_name=f"POS_ORD{order.id}.pdf",
-        mimetype="application/pdf"
-    )
-    
-# Address List + Add
+
+# ------------------------------------------------
+# ADDRESSES
+# ------------------------------------------------
 @views.route("/addresses", methods=["GET", "POST"])
 @login_required
 def addresses():
     if request.method == "POST":
-        # Default હટાવો પહેલા
         if request.form.get("is_default"):
             Address.query.filter_by(user_id=current_user.id, is_default=True).update({"is_default": False})
-
         new_addr = Address(
             user_id=current_user.id,
             full_name=request.form.get("full_name"),
@@ -1161,12 +806,10 @@ def addresses():
         db.session.commit()
         flash("Address saved!", "success")
         return redirect(url_for("views.addresses"))
-
     all_addresses = Address.query.filter_by(user_id=current_user.id).all()
     return render_template("addresses.html", addresses=all_addresses)
 
 
-# Address Delete
 @views.route("/delete_address/<int:addr_id>", methods=["POST"])
 @login_required
 def delete_address(addr_id):
@@ -1177,7 +820,6 @@ def delete_address(addr_id):
     return redirect(url_for("views.addresses"))
 
 
-# Default Set કરો
 @views.route("/set_default_address/<int:addr_id>", methods=["POST"])
 @login_required
 def set_default_address(addr_id):
@@ -1188,9 +830,10 @@ def set_default_address(addr_id):
     flash("Default address set!", "success")
     return redirect(url_for("views.addresses"))
 
-# ============================================================
-# UPI - QR Code Generate
-# ============================================================
+
+# ================================================
+# UPI — QR Generate
+# ================================================
 @views.route("/generate_upi_qr/<int:amount>")
 @login_required
 def generate_upi_qr(amount):
@@ -1201,15 +844,10 @@ def generate_upi_qr(amount):
         f"&cu=INR"
         f"&tn=GreenMart-Order"
     )
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=8,
-        border=4
-    )
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=8, border=4)
     qr.add_data(upi_url)
     qr.make(fit=True)
-    img = qr.make_image(fill_color="#2d6a4f", back_color="white")
+    img    = qr.make_image(fill_color="#2d6a4f", back_color="white")
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
     buffer.seek(0)
@@ -1217,9 +855,10 @@ def generate_upi_qr(amount):
     return jsonify({"qr": img_base64, "upi_url": upi_url, "upi_id": YOUR_UPI_ID})
 
 
-# ============================================================
-# UPI - Payment Submit (UTR + Screenshot)
-# ============================================================
+# ================================================
+# UPI — Payment Submit
+# ✅ EMAIL: send_order_confirmed(order)  ← UPI order place thay tyare
+# ================================================
 @views.route("/submit_upi_payment", methods=["POST"])
 @login_required
 def submit_upi_payment():
@@ -1260,7 +899,7 @@ def submit_upi_payment():
     if not cart_items:
         return jsonify({"success": False, "message": "Cart empty છે!"})
 
-    subtotal = 0
+    subtotal       = 0
     checkout_items = []
     for item in cart_items:
         product = Product.query.get(item.product_id)
@@ -1313,6 +952,14 @@ def submit_upi_payment():
 
         Cart.query.filter_by(user_id=current_user.id).delete()
         db.session.commit()
+
+        # ✅ ORDER CONFIRMED EMAIL — UPI order place thay tyare
+        # Note: payment_status = "Pending Verification" — admin verify karse tyare alag email
+        try:
+            send_order_confirmed(order)
+        except Exception as e:
+            print("UPI Order Email Error:", e)
+
         return jsonify({"success": True, "order_id": f"ORD{order.id}"})
 
     except Exception as e:
@@ -1321,19 +968,14 @@ def submit_upi_payment():
         return jsonify({"success": False, "message": "Order save failed."})
 
 
-# ============================================================
-# Admin - Pending Payments List
-# ============================================================
+# ================================================
+# ADMIN — Pending Payments List
+# ================================================
 @views.route("/admin/pending-payments")
 @admin_required
 def pending_payments():
-    orders = (
-        Order.query
-        .filter_by(payment_method="upi", payment_status="Pending Verification")
-        .order_by(Order.created_at.desc())
-        .all()
-    )
-    login_form = LoginForm()
+    orders      = (Order.query.filter_by(payment_method="upi", payment_status="Pending Verification").order_by(Order.created_at.desc()).all())
+    login_form  = LoginForm()
     signup_form = SignupForm()
     return render_template(
         "admin/pending_payments.html",
@@ -1343,9 +985,10 @@ def pending_payments():
     )
 
 
-# ============================================================
-# Admin - Approve / Reject UPI Payment
-# ============================================================
+# ================================================
+# ADMIN — Approve / Reject UPI Payment
+# ✅ EMAIL approve: send_payment_confirmed(order)
+# ================================================
 @views.route("/admin/verify-payment/<int:order_id>", methods=["POST"])
 @admin_required
 def admin_verify_payment(order_id):
@@ -1355,7 +998,16 @@ def admin_verify_payment(order_id):
     if action == "approve":
         order.payment_status = "Paid"
         order.status         = "Confirmed"
+        db.session.commit()
+
+        # ✅ PAYMENT CONFIRMED EMAIL — Admin UPI approve kare tyare
+        try:
+            send_payment_confirmed(order)
+        except Exception as e:
+            print("Payment Confirmed Email Error:", e)
+
         flash(f"✅ ORD{order.id} approved!", "success")
+
     elif action == "reject":
         order.payment_status = "Failed"
         order.status         = "Payment Failed"
@@ -1363,31 +1015,16 @@ def admin_verify_payment(order_id):
             product = Product.query.get(item.product_id)
             if product:
                 product.stock += item.quantity
+        db.session.commit()
         flash(f"❌ ORD{order.id} rejected. Stock restored.", "danger")
 
-    db.session.commit()
     return redirect(url_for("views.pending_payments"))
 
-# ============================================================
-# ORDER CANCELLATION SYSTEM — views.py ma add karo
-# ============================================================
-# 
-# 1) models.py ma Order model ma aa fields add karo (jો naathi):
-#
-#    cancel_reason     = db.Column(db.String(200), nullable=True)
-#    cancel_note       = db.Column(db.String(500), nullable=True)
-#    cancelled_at      = db.Column(db.DateTime, nullable=True)
-#    cancel_flagged    = db.Column(db.Boolean, default=False)
-#
-# 2) db migrate karo:
-#    flask db migrate -m "add cancel fields"
-#    flask db upgrade
-#
-# 3) views.py ma aa routes add karo:
-# ============================================================
 
-from datetime import datetime  # already imported hase
-
+# ================================================
+# CANCEL ORDER
+# ✅ EMAIL: send_order_cancelled(order)
+# ================================================
 CANCEL_REASONS = [
     "Changed my mind",
     "Ordered by mistake",
@@ -1401,12 +1038,8 @@ CANCEL_REASONS = [
 @views.route("/cancel_order/<int:order_id>", methods=["POST"])
 @login_required
 def cancel_order(order_id):
-    order = Order.query.filter_by(
-        id=order_id,
-        user_id=current_user.id
-    ).first_or_404()
+    order = Order.query.filter_by(id=order_id, user_id=current_user.id).first_or_404()
 
-    # ✅ Sirf Pending / Processing orders j cancel thay
     if order.status not in ["Pending", "Processing"]:
         return jsonify({
             "success": False,
@@ -1414,30 +1047,34 @@ def cancel_order(order_id):
         })
 
     reason = request.form.get("cancel_reason", "").strip()
-    note   = request.form.get("cancel_note", "").strip()
+    note   = request.form.get("cancel_note",   "").strip()
 
     if not reason:
         return jsonify({"success": False, "message": "Cancel reason select karo!"})
 
     try:
-        # ✅ Stock restore karo
         for item in order.items:
             product = Product.query.get(item.product_id)
             if product:
                 product.stock += item.quantity
 
-        # ✅ Order update karo
-        order.status        = "Cancelled"
-        order.cancel_reason = reason
-        order.cancel_note   = note or None
-        order.cancelled_at  = datetime.utcnow()
-        order.cancel_flagged = True   # Admin dashboard ma flag thase
+        order.status         = "Cancelled"
+        order.cancel_reason  = reason
+        order.cancel_note    = note or None
+        order.cancelled_at   = datetime.utcnow()
+        order.cancel_flagged = True
 
         db.session.commit()
 
+        # ✅ ORDER CANCELLED EMAIL — cancel thay tyare
+        try:
+            send_order_cancelled(order)
+        except Exception as e:
+            print("Cancel Email Error:", e)
+
         return jsonify({
-            "success": True,
-            "message": "Order successfully cancelled!",
+            "success":  True,
+            "message":  "Order successfully cancelled!",
             "order_id": f"ORD{order.id}"
         })
 
@@ -1450,22 +1087,16 @@ def cancel_order(order_id):
 @views.route("/cancel_reasons")
 @login_required
 def cancel_reasons():
-    """AJAX — cancel reasons list return karo"""
     return jsonify(CANCEL_REASONS)
 
 
-# ============================================================
-# ADMIN — Cancelled Orders List
-# ============================================================
+# ================================================
+# ADMIN — Cancelled Orders
+# ================================================
 @views.route("/admin/cancelled-orders")
 @admin_required
 def admin_cancelled_orders():
-    orders = (
-        Order.query
-        .filter_by(status="Cancelled")
-        .order_by(Order.cancelled_at.desc())
-        .all()
-    )
+    orders      = Order.query.filter_by(status="Cancelled").order_by(Order.cancelled_at.desc()).all()
     login_form  = LoginForm()
     signup_form = SignupForm()
     return render_template(
@@ -1476,9 +1107,6 @@ def admin_cancelled_orders():
     )
 
 
-# ============================================================
-# ADMIN — Clear Cancel Flag (reviewed karyu)
-# ============================================================
 @views.route("/admin/clear-cancel-flag/<int:order_id>", methods=["POST"])
 @admin_required
 def clear_cancel_flag(order_id):
@@ -1487,3 +1115,63 @@ def clear_cancel_flag(order_id):
     db.session.commit()
     flash(f"ORD{order.id} reviewed!", "success")
     return redirect(url_for("views.admin_cancelled_orders"))
+
+
+# ------------------------------------------------
+# CATEGORY PAGES
+# ------------------------------------------------
+@views.route("/dairy-beverages")
+def dairy_beverages():
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+    return render_template(
+        "dairy_beverages.html",
+        login_form=login_form,
+        signup_form=signup_form,
+        image17="/static/images/milk.jpg",
+        image18="/static/images/buffelo.jpg",
+        image19="/static/images/cheese.jpg",
+        image20="/static/images/paneer.jpg",
+        image21="/static/images/butter.jpg",
+        image22="/static/images/ghee.jpg",
+        image23="/static/images/curd.jpg",
+        image24="/static/images/egg.jpg"
+    )
+
+
+@views.route("/grains-nuts")
+def grains_nuts():
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+    return render_template(
+        "grains_nuts.html",
+        login_form=login_form,
+        signup_form=signup_form,
+        image33="/static/images/almonds.jpg",
+        image34="/static/images/cashew.jpg",
+        image35="/static/images/nuts.jpg",
+        image36="/static/images/peanut.jpg",
+        image37="/static/images/pistachios.jpg",
+        image38="/static/images/raisins.jpg",
+        image39="/static/images/chia.jpg",
+        image40="/static/images/flax.jpg",
+        image41="/static/images/oats.jpg",
+        image42="/static/images/quinoa.jpg"
+    )
+
+
+@views.route("/spices-snacks")
+def spices_snacks():
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+    return render_template(
+        "spices_snacks.html",
+        login_form=login_form,
+        signup_form=signup_form,
+        image43="/static/images/redchilli.jpg",
+        image44="/static/images/termeric.jpg",
+        image45="/static/images/cumin.jpg",
+        image46="/static/images/black-pepper.jpg",
+        image47="/static/images/potato-chips.jpg",
+        image48="/static/images/cookies.jpg",
+    )
