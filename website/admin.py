@@ -9,6 +9,8 @@ from .forms import SettingsForm
 from .models import db, User, Product, Order
 from .forms import ShopItemsForm, LoginForm, SignupForm
 from .models import Category
+from datetime import datetime
+from .models import db, User, Product, Order, Coupon, DeliveryZone
 
 # ✅ EMAIL IMPORTS
 from .emails import (
@@ -410,3 +412,140 @@ def admin_verify_payment(order_id):
         flash(f"❌ ORD{order.id} rejected. Stock restored.", "danger")
 
     return redirect(url_for("admin.pending_payments"))
+
+
+# ─────────────────────────────────────────────────────────────
+# admin.py માં ઉમેરો — Coupon & Delivery Zone Management
+# Import line માં Coupon, DeliveryZone ઉમેરો:
+# from .models import db, User, Product, Order, Coupon, DeliveryZone
+# ─────────────────────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════
+# MANAGE COUPONS
+# ═══════════════════════════════════════════════════════════
+@admin.route("/admin/coupons")
+@admin_required
+def manage_coupons():
+    coupons     = Coupon.query.order_by(Coupon.created_at.desc()).all()
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+    return render_template("admin/coupons.html",
+                           coupons=coupons,
+                            now=datetime.utcnow(),
+                           login_form=login_form,
+                           signup_form=signup_form)
+
+
+@admin.route("/admin/coupons/add", methods=["POST"])
+@admin_required
+def add_coupon():
+    from datetime import datetime
+    code           = request.form.get("code", "").strip().upper()
+    coupon_type    = request.form.get("coupon_type", "flat")
+    discount_value = float(request.form.get("discount_value", 0))
+    min_order      = float(request.form.get("min_order", 0))
+    max_discount   = request.form.get("max_discount")
+    usage_limit    = request.form.get("usage_limit")
+    expires_at     = request.form.get("expires_at")
+
+    if not code or discount_value <= 0:
+        flash("Code અને Discount value જરૂરી છે!", "danger")
+        return redirect(url_for("admin.manage_coupons"))
+
+    if Coupon.query.filter_by(code=code).first():
+        flash(f"'{code}' already exists!", "danger")
+        return redirect(url_for("admin.manage_coupons"))
+
+    coupon = Coupon(
+        code           = code,
+        coupon_type    = coupon_type,
+        discount_value = discount_value,
+        min_order      = min_order,
+        max_discount   = float(max_discount) if max_discount else None,
+        usage_limit    = int(usage_limit) if usage_limit else None,
+        expires_at     = datetime.strptime(expires_at, "%Y-%m-%d") if expires_at else None,
+    )
+    db.session.add(coupon)
+    db.session.commit()
+    flash(f"✅ Coupon '{code}' added!", "success")
+    return redirect(url_for("admin.manage_coupons"))
+
+
+@admin.route("/admin/coupons/toggle/<int:id>", methods=["POST"])
+@admin_required
+def toggle_coupon(id):
+    coupon           = Coupon.query.get_or_404(id)
+    coupon.is_active = not coupon.is_active
+    db.session.commit()
+    status = "activated" if coupon.is_active else "deactivated"
+    flash(f"Coupon '{coupon.code}' {status}!", "success")
+    return redirect(url_for("admin.manage_coupons"))
+
+
+@admin.route("/admin/coupons/delete/<int:id>", methods=["POST"])
+@admin_required
+def delete_coupon(id):
+    coupon = Coupon.query.get_or_404(id)
+    db.session.delete(coupon)
+    db.session.commit()
+    flash("Coupon deleted!", "danger")
+    return redirect(url_for("admin.manage_coupons"))
+
+
+# ═══════════════════════════════════════════════════════════
+# MANAGE DELIVERY ZONES
+# ═══════════════════════════════════════════════════════════
+@admin.route("/admin/delivery-zones")
+@admin_required
+def manage_delivery_zones():
+    zones       = DeliveryZone.query.order_by(DeliveryZone.city).all()
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+    return render_template("admin/delivery_zones.html",
+                           zones=zones,
+                           login_form=login_form,
+                           signup_form=signup_form)
+
+
+@admin.route("/admin/delivery-zones/add", methods=["POST"])
+@admin_required
+def add_delivery_zone():
+    city   = request.form.get("city", "").strip().title()
+    charge = float(request.form.get("charge", 50))
+
+    if not city:
+        flash("City name જરૂરી છે!", "danger")
+        return redirect(url_for("admin.manage_delivery_zones"))
+
+    if DeliveryZone.query.filter(
+        db.func.lower(DeliveryZone.city) == city.lower()
+    ).first():
+        flash(f"'{city}' already exists!", "danger")
+        return redirect(url_for("admin.manage_delivery_zones"))
+
+    zone = DeliveryZone(city=city, charge=charge)
+    db.session.add(zone)
+    db.session.commit()
+    flash(f"✅ '{city}' zone added! Charge: Rs.{charge:.0f}", "success")
+    return redirect(url_for("admin.manage_delivery_zones"))
+
+
+@admin.route("/admin/delivery-zones/edit/<int:id>", methods=["POST"])
+@admin_required
+def edit_delivery_zone(id):
+    zone        = DeliveryZone.query.get_or_404(id)
+    zone.city   = request.form.get("city", zone.city).strip().title()
+    zone.charge = float(request.form.get("charge", zone.charge))
+    db.session.commit()
+    flash(f"✅ '{zone.city}' updated!", "success")
+    return redirect(url_for("admin.manage_delivery_zones"))
+
+
+@admin.route("/admin/delivery-zones/delete/<int:id>", methods=["POST"])
+@admin_required
+def delete_delivery_zone(id):
+    zone = DeliveryZone.query.get_or_404(id)
+    db.session.delete(zone)
+    db.session.commit()
+    flash("Zone deleted!", "danger")
+    return redirect(url_for("admin.manage_delivery_zones"))

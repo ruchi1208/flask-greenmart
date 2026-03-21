@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.admin-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); margin-bottom: 24px; }
+.page-header { background: linear-gradient(135deg, #1a5c2a, #2db96a); color: white; border-radius: 12px; padding: 24px 28px; margin-bottom: 24px; }
+.page-header h4 { margin: 0; font-weight: 700; font-size: 22px; }
+.page-header p  { margin: 6px 0 0; opacity: 0.85; font-size: 14px; }
+
+.zone-table { width: 100%; border-collapse: collapse; }
+.zone-table th { background: #f0fdf6; color: #1a5c2a; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 14px; border-bottom: 2px solid #d4e8d0; text-align: left; }
+.zone-table td { padding: 12px 14px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #333; vertical-align: middle; }
+.zone-table tr:hover td { background: #fafff9; }
+
+.badge-free    { background: #d4f0df; color: #1a5c2a; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge-paid    { background: #fef3c7; color: #92400e; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+
+.add-form { background: #f9fdf9; border: 1.5px solid #d4e8d0; border-radius: 10px; padding: 20px; }
+.form-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+.form-group { flex: 1; min-width: 150px; }
+.form-group label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 5px; display: block; text-transform: uppercase; letter-spacing: 0.4px; }
+.form-group input { width: 100%; padding: 9px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; }
+.form-group input:focus { border-color: #52b788; outline: none; }
+.btn-add    { background: #1a5c2a; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.btn-add:hover { background: #0f3d1a; }
+.btn-delete { background: #fff0f0; color: #dc3545; border: 1px solid #f5c6cb; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.btn-save   { background: #d4f0df; color: #1a5c2a; border: 1px solid #52b788; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+.default-note { background: #fff9e6; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #92400e; margin-bottom: 16px; }
+
+.stat-card { background: #f0fdf6; border: 1px solid #d4e8d0; border-radius: 10px; padding: 16px 20px; text-align: center; }
+.stat-card .stat-num { font-size: 28px; font-weight: 800; color: #1a5c2a; }
+.stat-card .stat-lbl { font-size: 12px; color: #6b8f6e; margin-top: 2px; }
+</style>
+
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h4>🚚 Delivery Zone Management</h4>
+        <p>City-wise delivery charges — Ahmedabad = Free, Others = Rs.50 default</p>
+      </div>
+      <a href="{{ url_for('admin.manage_coupons') }}"
+         style="background:rgba(255,255,255,0.2);color:white;border:1.5px solid rgba(255,255,255,0.5);padding:8px 18px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">
+        🎟️ Coupons
+      </a>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+      <div class="stat-card">
+        <div class="stat-num">{{ zones|length }}</div>
+        <div class="stat-lbl">Total Zones</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4">
+      <div class="stat-card">
+        <div class="stat-num">{{ zones|selectattr('charge', 'equalto', 0)|list|length }}</div>
+        <div class="stat-lbl">Free Delivery Cities</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4">
+      <div class="stat-card">
+        <div class="stat-num">₹50</div>
+        <div class="stat-lbl">Default (Other Cities)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Default Note -->
+  <div class="default-note">
+    ⚠️ <strong>Default Charge:</strong> જે city list માં ન હોય તેના માટે આપોઆપ <strong>Rs.50</strong> delivery charge લાગશે. City add કરવા નીચે form વાપરો.
+  </div>
+
+  <!-- Add New Zone -->
+  <div class="admin-card">
+    <h5 class="fw-bold mb-3" style="color:#1a5c2a;">➕ Add New City</h5>
+    <form method="POST" action="{{ url_for('admin.add_delivery_zone') }}">
+      <div class="add-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>City Name *</label>
+            <input name="city" placeholder="e.g. Ahmedabad" required>
+          </div>
+          <div class="form-group" style="max-width:200px;">
+            <label>Delivery Charge (Rs.)</label>
+            <input name="charge" type="number" step="0.01" min="0"
+                   placeholder="0 = Free" value="0">
+          </div>
+          <button type="submit" class="btn-add">✅ Add Zone</button>
+        </div>
+        <p style="font-size:12px;color:#888;margin:8px 0 0;">Tip: 0 = Free delivery, 40 = Rs.40 charge</p>
+      </div>
+    </form>
+  </div>
+
+  <!-- Zones Table -->
+  <div class="admin-card">
+    <h5 class="fw-bold mb-3" style="color:#1a5c2a;">🗺️ All Delivery Zones</h5>
+
+    {% if zones %}
+    <div style="overflow-x:auto;">
+      <table class="zone-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>City</th>
+            <th>Delivery Charge</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for zone in zones %}
+          <tr>
+            <td style="color:#aaa;">{{ loop.index }}</td>
+            <td>
+              <strong style="font-size:15px;">{{ zone.city }}</strong>
+            </td>
+            <td>
+              {% if zone.charge == 0 %}
+                <span class="badge-free">🎉 FREE</span>
+              {% else %}
+                <span class="badge-paid">₹{{ zone.charge|int }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if zone.is_active %}
+                <span style="color:#1a5c2a;font-size:12px;font-weight:600;">✅ Active</span>
+              {% else %}
+                <span style="color:#dc3545;font-size:12px;font-weight:600;">❌ Inactive</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <!-- Inline Edit -->
+                <form method="POST" action="{{ url_for('admin.edit_delivery_zone', id=zone.id) }}"
+                      style="display:flex;gap:6px;align-items:center;">
+                  <input name="city" value="{{ zone.city }}"
+                         style="width:120px;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
+                  <input name="charge" type="number" value="{{ zone.charge }}"
+                         style="width:70px;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:13px;">
+                  <button type="submit" class="btn-save">Save</button>
+                </form>
+                <form method="POST" action="{{ url_for('admin.delete_delivery_zone', id=zone.id) }}"
+                      onsubmit="return confirm('Delete {{ zone.city }}?')"
+                      style="display:inline;">
+                  <button type="submit" class="btn-delete">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% else %}
+    <div style="text-align:center;padding:40px;color:#aaa;">
+      <div style="font-size:48px;margin-bottom:12px;">🗺️</div>
+      <p style="font-size:16px;">કોઈ zone નથી. ઉપર city ઉમેરો!</p>
+      <p style="font-size:13px;">સૂચન: Ahmedabad = 0 (Free), Surat = 40, Vadodara = 40 ઉમેરો</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

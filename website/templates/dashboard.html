@@ -30,30 +30,26 @@
             </div>
         </div>
 
-       <div class="col-md-3">
-    <div class="card text-center p-3 shadow-sm">
-        <h6 class="text-muted">Categories</h6>
-
-        {% if categories %}
-            <h5 class="text-info">
-                {% for category in categories %}
-                    {{ category.name }}<br>
-                {% endfor %}
-            </h5>
-        {% else %}
-            <p class="text-danger">No categories found</p>
-        {% endif %}
-    </div>
-</div>
-
-
+        <div class="col-md-3">
+            <div class="card text-center p-3 shadow-sm">
+                <h6 class="text-muted">Categories</h6>
+                {% if categories %}
+                    <h5 class="text-info">
+                        {% for category in categories %}
+                            {{ category.name }}<br>
+                        {% endfor %}
+                    </h5>
+                {% else %}
+                    <p class="text-danger">No categories found</p>
+                {% endif %}
+            </div>
+        </div>
 
     </div>
 
     <!-- Quick Actions -->
     <div class="mt-5">
         <h4 class="mb-3">Quick Actions</h4>
-
         <div class="d-flex gap-3 flex-wrap">
 
             <a href="{{ url_for('admin.manage_users') }}" class="btn btn-outline-primary">
@@ -78,6 +74,16 @@
 
             <a href="{{ url_for('admin.settings') }}" class="btn btn-outline-secondary">
                 <i class="fa-duotone fa-solid fa-gear"></i> Settings
+            </a>
+
+            <a href="{{ url_for('admin.manage_coupons') }}"
+               class="btn btn-outline-danger">
+                🎟️ Coupons
+            </a>
+
+            <a href="{{ url_for('admin.manage_delivery_zones') }}"
+               class="btn btn-outline-success">
+                🚚 Delivery Zones
             </a>
 
         </div>

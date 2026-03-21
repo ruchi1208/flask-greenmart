@@ -586,6 +586,179 @@ def shop():
 # ================================================
 # CHECKOUT  (COD)
 # ================================================
+# @views.route("/checkout", methods=["GET", "POST"])
+# @login_required
+# def checkout():
+#     login_form  = LoginForm()
+#     signup_form = SignupForm()
+
+#     user_addresses  = Address.query.filter_by(user_id=current_user.id).all()
+#     default_address = Address.query.filter_by(user_id=current_user.id, is_default=True).first()
+
+#     cart_items_db  = Cart.query.filter_by(user_id=current_user.id).all()
+#     subtotal       = 0
+#     checkout_items = []
+
+#     for item in cart_items_db:
+#         product = Product.query.get(item.product_id)
+#         if product:
+#             total = product.price * item.quantity
+#             subtotal += total
+#             checkout_items.append({
+#                 "id":       product.id,
+#                 "name":     product.name,
+#                 "price":    product.price,
+#                 "quantity": item.quantity,
+#                 "subtotal": total,
+#                 "stock":    product.stock,
+#             })
+
+#     if request.method == "POST":
+#         if not checkout_items:
+#             return jsonify({"success": False, "message": "Cart is empty"})
+
+#         address_id = request.form.get("address_id")
+#         if address_id:
+#             addr = Address.query.get(address_id)
+#         else:
+#             addr = Address(
+#                 user_id=current_user.id,
+#                 full_name=request.form.get("full_name"),
+#                 phone=request.form.get("phone"),
+#                 street=request.form.get("street"),
+#                 city=request.form.get("city"),
+#                 state=request.form.get("state"),
+#                 pin=request.form.get("pin"),
+#             )
+#             db.session.add(addr)
+#             db.session.flush()
+
+#         try:
+#             order = Order(
+#                 user_id        = current_user.id,
+#                 total_amount   = subtotal,
+#                 status         = "Pending",
+#                 payment_method = "cod",
+#                 payment_status = "Unpaid",
+#                 tracking_id    = generate_tracking_id(),  # ✅ AUTO TRACKING ID
+#                 shipping_name  = addr.full_name,
+#                 shipping_phone = addr.phone,
+#                 shipping_street= addr.street,
+#                 shipping_city  = addr.city,
+#                 shipping_state = addr.state,
+#                 shipping_pin   = addr.pin,
+#             )
+#             db.session.add(order)
+#             db.session.flush()
+
+#             for item in checkout_items:
+#                 product = Product.query.get(item["id"])
+#                 if product.stock < item["quantity"]:
+#                     return jsonify({
+#                         "success": False,
+#                         "message": f"Only {product.stock} left for {product.name}"
+#                     })
+#                 product.stock -= item["quantity"]
+#                 db.session.add(OrderItem(
+#                     order_id   = order.id,
+#                     product_id = product.id,
+#                     quantity   = item["quantity"],
+#                     price      = product.price,
+#                 ))
+
+#             Cart.query.filter_by(user_id=current_user.id).delete()
+#             db.session.commit()
+
+#             # ✅ ORDER CONFIRMED EMAIL
+#             try:
+#                 send_order_confirmed(order)
+#             except Exception as e:
+#                 print("Order Confirmed Email Error:", e)
+
+#             return jsonify({"success": True, "order_id": f"ORD{order.id}"})
+
+#         except Exception as e:
+#             db.session.rollback()
+#             print("Checkout Error:", e)
+#             return jsonify({"success": False, "message": "Checkout failed"})
+
+#     return render_template(
+#         "checkout.html",
+#         cart_items=checkout_items,
+#         subtotal=subtotal,
+#         user_addresses=user_addresses,
+#         default_address=default_address,
+#         login_form=login_form,
+#         signup_form=signup_form,
+#     )
+
+
+# ─────────────────────────────────────────────────────────────
+# આ routes views.py માં ઉમેરો (cancel_reasons route પછી)
+# models import માં Coupon અને DeliveryZone ઉમેરો
+# ─────────────────────────────────────────────────────────────
+
+# models import line માં આ ઉમેરો:
+# from .models import (db, User, Product, ContactMessage, Wishlist,
+#     Cart, Order, OrderItem, Category, Address, generate_tracking_id,
+#     Coupon, DeliveryZone)
+
+
+# ═══════════════════════════════════════════════════════════
+# COUPON APPLY — AJAX call
+# POST /apply_coupon  →  {code, subtotal}
+# ═══════════════════════════════════════════════════════════
+@views.route("/apply_coupon", methods=["POST"])
+@login_required
+def apply_coupon():
+    data     = request.get_json()
+    code     = (data.get("code") or "").strip().upper()
+    subtotal = float(data.get("subtotal", 0))
+
+    if not code:
+        return jsonify({"success": False, "message": "Coupon code દાખલ કરો!"})
+
+    coupon = Coupon.query.filter_by(code=code).first()
+    if not coupon:
+        return jsonify({"success": False, "message": "Invalid coupon code!"})
+
+    valid, msg = coupon.is_valid()
+    if not valid:
+        return jsonify({"success": False, "message": msg})
+
+    discount, msg2 = coupon.calculate_discount(subtotal)
+    if discount == 0:
+        return jsonify({"success": False, "message": msg2})
+
+    return jsonify({
+        "success":  True,
+        "discount": discount,
+        "message":  f"🎉 Coupon applied! Rs.{discount:.0f} off!",
+        "type":     coupon.coupon_type,
+        "value":    coupon.discount_value,
+    })
+
+
+# ═══════════════════════════════════════════════════════════
+# DELIVERY CHARGE — AJAX call
+# GET /get_delivery_charge?city=Ahmedabad
+# ═══════════════════════════════════════════════════════════
+@views.route("/get_delivery_charge")
+@login_required
+def get_delivery_charge():
+    city   = request.args.get("city", "").strip()
+    charge = DeliveryZone.get_charge(city)
+    return jsonify({
+        "charge":  charge,
+        "is_free": charge == 0,
+        "message": "Free Delivery! 🎉" if charge == 0 else f"Delivery charge: Rs.{charge:.0f}",
+    })
+
+
+# ═══════════════════════════════════════════════════════════
+# CHECKOUT (COD) — coupon + delivery charge support
+# views.py માં હાલના checkout function ને replace કરો
+# ═══════════════════════════════════════════════════════════
 @views.route("/checkout", methods=["GET", "POST"])
 @login_required
 def checkout():
@@ -605,48 +778,67 @@ def checkout():
             total = product.price * item.quantity
             subtotal += total
             checkout_items.append({
-                "id":       product.id,
-                "name":     product.name,
-                "price":    product.price,
-                "quantity": item.quantity,
-                "subtotal": total,
-                "stock":    product.stock,
+                "id": product.id, "name": product.name,
+                "price": product.price, "quantity": item.quantity,
+                "subtotal": total, "stock": product.stock,
             })
 
     if request.method == "POST":
         if not checkout_items:
             return jsonify({"success": False, "message": "Cart is empty"})
 
+        # ── Address ──────────────────────────────────────────
         address_id = request.form.get("address_id")
         if address_id:
             addr = Address.query.get(address_id)
         else:
             addr = Address(
-                user_id=current_user.id,
-                full_name=request.form.get("full_name"),
-                phone=request.form.get("phone"),
-                street=request.form.get("street"),
-                city=request.form.get("city"),
-                state=request.form.get("state"),
-                pin=request.form.get("pin"),
+                user_id   = current_user.id,
+                full_name = request.form.get("full_name"),
+                phone     = request.form.get("phone"),
+                street    = request.form.get("street"),
+                city      = request.form.get("city"),
+                state     = request.form.get("state"),
+                pin       = request.form.get("pin"),
             )
             db.session.add(addr)
             db.session.flush()
 
+        # ── Delivery Charge ──────────────────────────────────
+        delivery_charge = DeliveryZone.get_charge(addr.city)
+
+        # ── Coupon ───────────────────────────────────────────
+        coupon_code     = request.form.get("coupon_code", "").strip().upper()
+        discount_amount = 0
+        if coupon_code:
+            coupon = Coupon.query.filter_by(code=coupon_code).first()
+            if coupon:
+                valid, _ = coupon.is_valid()
+                if valid:
+                    discount_amount, _ = coupon.calculate_discount(subtotal)
+                    coupon.used_count += 1
+
+        # ── Final Total ──────────────────────────────────────
+        final_total = subtotal + delivery_charge - discount_amount
+        final_total = max(final_total, 0)
+
         try:
             order = Order(
-                user_id        = current_user.id,
-                total_amount   = subtotal,
-                status         = "Pending",
-                payment_method = "cod",
-                payment_status = "Unpaid",
-                tracking_id    = generate_tracking_id(),  # ✅ AUTO TRACKING ID
-                shipping_name  = addr.full_name,
-                shipping_phone = addr.phone,
-                shipping_street= addr.street,
-                shipping_city  = addr.city,
-                shipping_state = addr.state,
-                shipping_pin   = addr.pin,
+                user_id         = current_user.id,
+                total_amount    = final_total,
+                status          = "Pending",
+                payment_method  = "cod",
+                payment_status  = "Unpaid",
+                tracking_id     = generate_tracking_id(),
+                coupon_code     = coupon_code or None,
+                discount_amount = discount_amount,
+                delivery_charge = delivery_charge,
+                shipping_name   = addr.full_name,
+                shipping_phone  = addr.phone,
+                shipping_street = addr.street,
+                shipping_city   = addr.city,
+                shipping_state  = addr.state,
+                shipping_pin    = addr.pin,
             )
             db.session.add(order)
             db.session.flush()
@@ -654,22 +846,17 @@ def checkout():
             for item in checkout_items:
                 product = Product.query.get(item["id"])
                 if product.stock < item["quantity"]:
-                    return jsonify({
-                        "success": False,
-                        "message": f"Only {product.stock} left for {product.name}"
-                    })
+                    return jsonify({"success": False,
+                                    "message": f"Only {product.stock} left for {product.name}"})
                 product.stock -= item["quantity"]
                 db.session.add(OrderItem(
-                    order_id   = order.id,
-                    product_id = product.id,
-                    quantity   = item["quantity"],
-                    price      = product.price,
+                    order_id=order.id, product_id=product.id,
+                    quantity=item["quantity"], price=product.price,
                 ))
 
             Cart.query.filter_by(user_id=current_user.id).delete()
             db.session.commit()
 
-            # ✅ ORDER CONFIRMED EMAIL
             try:
                 send_order_confirmed(order)
             except Exception as e:
@@ -684,14 +871,13 @@ def checkout():
 
     return render_template(
         "checkout.html",
-        cart_items=checkout_items,
-        subtotal=subtotal,
-        user_addresses=user_addresses,
-        default_address=default_address,
-        login_form=login_form,
-        signup_form=signup_form,
+        cart_items      = checkout_items,
+        subtotal        = subtotal,
+        user_addresses  = user_addresses,
+        default_address = default_address,
+        login_form      = login_form,
+        signup_form     = signup_form,
     )
-
 
 # ------------------------------------------------
 # INVOICE
