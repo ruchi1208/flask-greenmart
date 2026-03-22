@@ -38,7 +38,7 @@ from .models import (
     Address,
     generate_tracking_id,
 )
-
+from .models import User, Product, Order, Coupon, DeliveryZone 
 # Forms & Products
 from .forms import SignupForm, LoginForm
 from .products import all_products
