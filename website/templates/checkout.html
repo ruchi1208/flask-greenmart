@@ -326,7 +326,7 @@
       <label>UTR / Transaction ID (Optional)</label>
       <input type="text" id="utrInput" placeholder="e.g. 123456789012">
       <label class="screenshot-label" for="screenshotInput">
-        📎 Screenshot upload karo
+        📎upload Screenshot
         <span id="screenshotPreview" style="font-size:12px;color:#888;margin-left:auto;">Optional</span>
       </label>
       <input type="file" id="screenshotInput" accept="image/*" style="display:none"
@@ -486,15 +486,15 @@ function goToPayment() {
   const newFormOpen = document.getElementById('newAddressForm').classList.contains('open');
 
   if (!addressId && !newFormOpen) {
-    showError('Delivery Address select કરો!'); return;
+    showError('Select Delivery Address!'); return;
   }
   if (newFormOpen) {
     const v = (s) => document.querySelector(`[name="${s}"]`)?.value.trim();
     if (!v('full_name') || !v('phone') || !v('street') || !v('city') || !v('state') || !v('pin')) {
       showError('Address ના બધા fields ભરો!'); return;
     }
-    if (!/^\d{10}$/.test(v('phone'))) { showError('Phone 10 digits નો જોઈએ!'); return; }
-    if (!/^\d{6}$/.test(v('pin')))   { showError('PIN 6 digits નો જોઈએ!'); return; }
+    if (!/^\d{10}$/.test(v('phone'))) { showError('Phone number 10 digits required!'); return; }
+    if (!/^\d{6}$/.test(v('pin')))   { showError('PIN must be 6 digits!'); return; }
     document.getElementById('reviewAddressText').innerText =
       `${v('full_name')} — ${v('street')}, ${v('city')}, ${v('state')} - ${v('pin')} 📞 ${v('phone')}`;
   }
