@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "admin/base.html" %}
 
 {% block content %}
 <div class="container py-5">
@@ -7,44 +7,56 @@
             <h2 class="mb-4 text-center">➕ Add Product</h2>
 
             <form method="POST" enctype="multipart/form-data">
+                {{ form.hidden_tag() }}
+
                 <!-- Product Name -->
                 <div class="mb-3">
-                    <label for="name" class="form-label">Product Name</label>
-                    <input type="text" class="form-control" id="name" name="name" placeholder="Enter product name"
-                        required>
+                    {{ form.product_name.label(class="form-label") }}
+                    {{ form.product_name(class="form-control", placeholder="Enter product name") }}
                 </div>
 
                 <!-- Price -->
                 <div class="mb-3">
-                    <label for="price" class="form-label">Price (₹)</label>
-                    <input type="number" class="form-control" id="price" name="price" placeholder="Enter product price"
-                        step="0.01" required>
+                    {{ form.current_price.label(class="form-label") }}
+                    {{ form.current_price(class="form-control", placeholder="Enter price") }}
                 </div>
 
                 <!-- Stock -->
                 <div class="mb-3">
-                    <label>Stock Quantity</label>
+                    {{ form.stock.label(class="form-label") }}
                     {{ form.stock(class="form-control") }}
                 </div>
 
+                <!-- Category -->
+                <div class="mb-3">
+                    {{ form.category_id.label(class="form-label") }}
+                    {{ form.category_id(class="form-select") }}
+                </div>
 
                 <!-- Image -->
                 <div class="mb-3">
-                    <label for="image" class="form-label">Product Image</label>
-                    <input type="file" class="form-control" id="image" name="image" accept="image/*" required>
+                    {{ form.product_picture.label(class="form-label") }}
+                    {{ form.product_picture(class="form-control") }}
                 </div>
 
                 <!-- Description -->
                 <div class="mb-3">
-                    <label for="description" class="form-label">Description</label>
-                    <textarea class="form-control" id="description" name="description" rows="4"
-                        placeholder="Enter product description"></textarea>
+                    {{ form.description.label(class="form-label") }}
+                    {{ form.description(class="form-control", rows="4") }}
                 </div>
 
-                <!-- Submit Button -->
+                <!-- Submit -->
                 <div class="d-grid">
-                    <button type="submit" class="btn btn-success btn-block">Add Product</button>
+                    {{ form.submit(class="btn btn-success") }}
                 </div>
+
+                <!-- Form Errors -->
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <div class="text-danger mt-1">{{ field.label.text }}: {{ error }}</div>
+                    {% endfor %}
+                {% endfor %}
+
             </form>
         </div>
     </div>

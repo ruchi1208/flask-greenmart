@@ -1,0 +1,231 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Variants | {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('admin.manage_products') }}">Products</a></li>
+      <li class="breadcrumb-item active">{{ product.name }} — Variants</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+
+    <!-- ── ADD VARIANT FORM ── -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4" style="color:#1a4a22;">
+            <i class="bi bi-plus-circle me-2"></i>Add New Variant
+          </h5>
+
+          <form method="POST" action="{{ url_for('admin.manage_variants', product_id=product.id) }}">
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Label</label>
+              <input type="text" name="label" class="form-control" 
+                     placeholder="e.g. 250g, 500g, 1kg, 1L"
+                     required>
+              <div class="form-text">Size / weight / unit dikhavshe</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Price (₹)</label>
+              <input type="number" name="price" class="form-control"
+                     placeholder="e.g. 199" step="0.01" min="0" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Stock</label>
+              <input type="number" name="stock" class="form-control"
+                     placeholder="e.g. 100" min="0" value="0" required>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Sort Order</label>
+              <input type="number" name="sort_order" class="form-control"
+                     placeholder="0 = first" min="0" value="0">
+              <div class="form-text">Nanu number pehle dikhashe</div>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100 fw-semibold">
+              <i class="bi bi-plus-lg me-2"></i>Add Variant
+            </button>
+
+          </form>
+        </div>
+      </div>
+
+      <!-- Product Info Card -->
+      <div class="card border-0 shadow-sm rounded-4 mt-3">
+        <div class="card-body p-4">
+          <h6 class="fw-bold mb-3" style="color:#1a4a22;">Product Info</h6>
+          <div class="d-flex align-items-center gap-3">
+            <img src="{{ product.image }}" 
+                 style="width:60px;height:60px;object-fit:cover;border-radius:10px;">
+            <div>
+              <div class="fw-bold">{{ product.name }}</div>
+              <div class="text-muted small">Base Price: ₹{{ product.price }}</div>
+              <div class="text-muted small">Stock: {{ product.stock }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── VARIANTS LIST ── -->
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4" style="color:#1a4a22;">
+            <i class="bi bi-list-ul me-2"></i>
+            Existing Variants
+            <span class="badge bg-success ms-2">{{ variants|length }}</span>
+          </h5>
+
+          {% if variants %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Label</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Sort</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for v in variants %}
+                <tr>
+                  <td>
+                    <span class="badge bg-light text-dark border fw-semibold fs-6">
+                      {{ v.label }}
+                    </span>
+                  </td>
+                  <td class="fw-bold text-success">₹{{ v.price }}</td>
+                  <td>
+                    {% if v.stock <= 0 %}
+                      <span class="badge bg-danger">Out of Stock</span>
+                    {% elif v.stock <= 5 %}
+                      <span class="badge bg-warning text-dark">Low: {{ v.stock }}</span>
+                    {% else %}
+                      <span class="badge bg-success">{{ v.stock }}</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-muted">{{ v.sort_order }}</td>
+                  <td>
+                    {% if v.is_active %}
+                      <span class="badge bg-success">Active</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Inactive</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="d-flex gap-2">
+
+                      <!-- Edit Button -->
+                      <button class="btn btn-sm btn-outline-primary"
+                              data-bs-toggle="modal"
+                              data-bs-target="#editModal{{ v.id }}">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+
+                      <!-- Toggle Active -->
+                      <form method="POST" 
+                            action="{{ url_for('admin.toggle_variant', variant_id=v.id) }}">
+                        <button type="submit" 
+                                class="btn btn-sm {{ 'btn-outline-warning' if v.is_active else 'btn-outline-success' }}"
+                                title="{{ 'Deactivate' if v.is_active else 'Activate' }}">
+                          <i class="bi bi-{{ 'eye-slash' if v.is_active else 'eye' }}"></i>
+                        </button>
+                      </form>
+
+                      <!-- Delete Button -->
+                      <form method="POST"
+                            action="{{ url_for('admin.delete_variant', variant_id=v.id) }}"
+                            onsubmit="return confirm('Delete {{ v.label }} variant?')">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </form>
+
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- ── EDIT MODAL ── -->
+                <div class="modal fade" id="editModal{{ v.id }}" tabindex="-1">
+                  <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content rounded-4 border-0 shadow">
+                      <div class="modal-header border-0">
+                        <h5 class="modal-title fw-bold">Edit — {{ v.label }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <form method="POST" 
+                            action="{{ url_for('admin.edit_variant', variant_id=v.id) }}">
+                        <div class="modal-body">
+
+                          <div class="mb-3">
+                            <label class="form-label fw-semibold">Label</label>
+                            <input type="text" name="label" class="form-control"
+                                   value="{{ v.label }}" required>
+                          </div>
+
+                          <div class="mb-3">
+                            <label class="form-label fw-semibold">Price (₹)</label>
+                            <input type="number" name="price" class="form-control"
+                                   value="{{ v.price }}" step="0.01" min="0" required>
+                          </div>
+
+                          <div class="mb-3">
+                            <label class="form-label fw-semibold">Stock</label>
+                            <input type="number" name="stock" class="form-control"
+                                   value="{{ v.stock }}" min="0" required>
+                          </div>
+
+                          <div class="mb-3">
+                            <label class="form-label fw-semibold">Sort Order</label>
+                            <input type="number" name="sort_order" class="form-control"
+                                   value="{{ v.sort_order }}" min="0">
+                          </div>
+
+                        </div>
+                        <div class="modal-footer border-0">
+                          <button type="button" class="btn btn-secondary" 
+                                  data-bs-dismiss="modal">Cancel</button>
+                          <button type="submit" class="btn btn-success fw-semibold">
+                            Save Changes
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                <!-- ── END EDIT MODAL ── -->
+
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          {% else %}
+          <div class="text-center py-5">
+            <i class="bi bi-box-seam" style="font-size:3rem;color:#ccc;"></i>
+            <p class="text-muted mt-3">Koi variant nathi. Upar form thi add karo.</p>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

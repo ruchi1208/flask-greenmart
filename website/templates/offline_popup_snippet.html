@@ -1,0 +1,265 @@
+<!-- ═══════════════════════════════════════════════════════════════
+  OFFLINE POPUP  ─  paste this just before </body> in your base.html
+  Works automatically on any page that extends base.html
+═══════════════════════════════════════════════════════════════ -->
+
+<!-- ── Offline popup overlay ── -->
+<div id="offline-overlay" style="display:none;">
+    <div id="offline-card">
+        <div class="offline-icon" id="offline-anim">📡</div>
+        <h2 class="offline-title">No Internet Connection</h2>
+        <p class="offline-desc">
+            It looks like you're offline.<br>
+            Check your Wi-Fi or mobile data and try again.
+        </p>
+        <div class="offline-status" id="offline-status-badge">
+            <span class="offline-dot"></span>
+            <span id="offline-status-text">You are offline</span>
+        </div>
+        <button id="offline-retry-btn" onclick="retryConnection()">
+            🔄 Retry
+        </button>
+        <p class="offline-note">🌿 GreenMart will reconnect automatically when you're back online.</p>
+    </div>
+</div>
+
+<!-- ── Back Online toast ── -->
+<div id="online-toast" style="display:none;">
+    <span>✅</span>
+    <span>You're back online!</span>
+</div>
+
+<style>
+/* ── Overlay backdrop ── */
+#offline-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(15, 30, 17, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInOverlay 0.35s ease both;
+}
+#offline-overlay.hidden { display: none !important; }
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ── Card ── */
+#offline-card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 48px 40px 40px;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.35);
+    animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    border: 1px solid rgba(46, 125, 50, 0.15);
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(50px) scale(0.93); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* ── Animated icon ── */
+.offline-icon {
+    font-size: 64px;
+    display: block;
+    margin-bottom: 18px;
+    animation: pulse 2s ease-in-out infinite;
+    line-height: 1;
+}
+@keyframes pulse {
+    0%,100% { transform: scale(1);   opacity: 1;   }
+    50%      { transform: scale(0.9); opacity: 0.7; }
+}
+
+/* ── Typography ── */
+.offline-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1c2b1e;
+    margin-bottom: 10px;
+}
+.offline-desc {
+    font-size: 14px;
+    color: #6b7a6d;
+    line-height: 1.7;
+    margin-bottom: 22px;
+}
+
+/* ── Status badge ── */
+.offline-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 50px;
+    padding: 7px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #b91c1c;
+    margin-bottom: 24px;
+}
+.offline-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: blink 1.2s ease-in-out infinite;
+    flex-shrink: 0;
+}
+@keyframes blink {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.2; }
+}
+
+/* ── Retry button ── */
+#offline-retry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #1a4a22, #2e7d32);
+    color: #fff;
+    border: none;
+    padding: 13px 36px;
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    margin-bottom: 18px;
+    box-shadow: 0 6px 24px rgba(46, 125, 50, 0.35);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+#offline-retry-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(46, 125, 50, 0.45); }
+#offline-retry-btn.spinning { animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Bottom note ── */
+.offline-note {
+    font-size: 12px;
+    color: #9ca3af;
+    margin: 0;
+}
+
+/* ── "Back Online" toast ── */
+#online-toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    z-index: 100000;
+    background: #1a4a22;
+    color: #fff;
+    padding: 12px 28px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 30px rgba(26, 74, 34, 0.45);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s;
+    opacity: 0;
+    font-family: 'DM Sans', sans-serif;
+}
+#online-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+#online-toast.hidden { display: none !important; }
+</style>
+
+<script>
+(function () {
+    const overlay    = document.getElementById('offline-overlay');
+    const toast      = document.getElementById('online-toast');
+    const retryBtn   = document.getElementById('offline-retry-btn');
+    const statusText = document.getElementById('offline-status-text');
+
+    function showOffline() {
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
+        // Hide toast if visible
+        toast.classList.remove('show');
+        setTimeout(() => { toast.classList.add('hidden'); }, 450);
+    }
+
+    function showOnline() {
+        overlay.classList.add('hidden');
+        overlay.style.display = 'none';
+        // Show green toast
+        toast.classList.remove('hidden');
+        toast.style.display = 'flex';
+        // Small tick then animate in
+        setTimeout(() => { toast.classList.add('show'); }, 20);
+        // Auto-hide after 3.5s
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => { toast.classList.add('hidden'); toast.style.display = 'none'; }, 450);
+        }, 3500);
+    }
+
+    // Initial check on page load
+    if (!navigator.onLine) {
+        showOffline();
+    }
+
+    // Listen for browser events
+    window.addEventListener('offline', showOffline);
+    window.addEventListener('online',  showOnline);
+
+    // Retry button — manual ping
+    window.retryConnection = function () {
+        retryBtn.textContent = '⏳ Checking…';
+        retryBtn.disabled = true;
+
+        // Ping a tiny resource (favicon or manifest) to truly verify
+        const probe = new Image();
+        const ts    = Date.now();
+        probe.onload  = () => { retryBtn.textContent = '🔄 Retry'; retryBtn.disabled = false; showOnline(); };
+        probe.onerror = () => {
+            retryBtn.textContent = '🔄 Retry';
+            retryBtn.disabled = false;
+            // Shake the card
+            const card = document.getElementById('offline-card');
+            card.style.animation = 'none';
+            card.offsetHeight; // reflow
+            card.style.animation = 'shake 0.4s ease';
+        };
+        probe.src = '/static/images/1.jpg?' + ts; // uses existing GreenMart image
+    };
+
+    // Auto-retry every 8 seconds silently
+    setInterval(() => {
+        if (!navigator.onLine) return;
+        const probe = new Image();
+        probe.onload  = () => { if (overlay.style.display !== 'none') showOnline(); };
+        probe.onerror = () => {};
+        probe.src = '/static/images/1.jpg?' + Date.now();
+    }, 8000);
+
+    // Shake animation
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            20%      { transform: translateX(-8px); }
+            40%      { transform: translateX(8px);  }
+            60%      { transform: translateX(-5px); }
+            80%      { transform: translateX(5px);  }
+        }
+    `;
+    document.head.appendChild(styleEl);
+})();
+</script>

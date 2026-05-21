@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "admin/base.html" %}
 {% block content %}
 
 <div class="container py-5">
@@ -25,9 +25,8 @@
             <tr>
                 <td>{{ product.id }}</td>
                 <td>
-                    <img src="{{ url_for('static', filename=product.image) }}" width="60" class="rounded">
-
-                </td>
+    <img src="{{ product.image }}" width="60" class="rounded">
+</td>
                 <td>{{ product.name }}</td>
                 <td>${{ product.price }}</td>
                 <td>
@@ -52,6 +51,10 @@
                         onclick="return confirm('Delete this product?')">
                         Delete
                     </a>
+                    <a href="{{ url_for('admin.manage_variants', product_id=product.id) }}" 
+   class="btn btn-sm btn-outline-info">
+  <i class="bi bi-tags"></i> Variants
+</a>
                 </td>
             </tr>
             {% endfor %}

@@ -1,0 +1,818 @@
+{% extends "base.html" %}
+{% block title %}Bundle Deals | GreenMart{% endblock %}
+
+{% block content %}
+<style>
+:root {
+  --g1: #0f4c1e;
+  --g2: #1a7a3a;
+  --g3: #2db96a;
+  --g-pale: #f0fdf4;
+  --g-mid: #d1fae5;
+  --red: #dc2626;
+  --amber: #d97706;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-600: #4b5563;
+  --gray-800: #1f2937;
+  --radius: 20px;
+  --radius-sm: 12px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.07);
+  --shadow-md: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+/* ── Hero ── */
+.bundles-hero {
+  background: linear-gradient(135deg, var(--g1) 0%, #1a4a22 50%, #0a2e10 100%);
+  padding: 64px 0 80px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.bundles-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.bundles-hero h1 {
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 800;
+  color: white;
+  margin: 0 0 12px;
+  font-family: 'DM Serif Display', serif;
+  position: relative;
+}
+.bundles-hero p {
+  font-size: 17px;
+  color: rgba(255,255,255,0.65);
+  margin: 0 auto;
+  max-width: 520px;
+  position: relative;
+}
+.hero-pills {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  justify-content: center;
+  margin-top: 28px;
+  position: relative;
+}
+.hero-pill {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+
+/* ── Filter bar ── */
+.filter-bar {
+  background: white;
+  border-bottom: 1px solid var(--gray-200);
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: var(--shadow);
+}
+.filter-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+}
+.filter-btn {
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-600);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.filter-btn:hover { color: var(--g2); }
+.filter-btn.active {
+  color: var(--g2);
+  border-bottom-color: var(--g3);
+}
+
+/* ── Main layout ── */
+.bundles-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+/* ── Section header ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.section-header h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--gray-800);
+  margin: 0;
+  font-family: 'DM Serif Display', serif;
+}
+.bundle-count {
+  background: var(--g-mid);
+  color: var(--g1);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 99px;
+}
+
+/* ── Bundle Grid ── */
+.bundle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 28px;
+}
+
+/* ── Bundle Card ── */
+.bundle-card {
+  background: white;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--gray-200);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: transform 0.25s, box-shadow 0.25s;
+  position: relative;
+}
+.bundle-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-md);
+  border-color: #a7f3d0;
+}
+
+/* Deal type ribbon */
+.deal-ribbon {
+  position: absolute;
+  top: 16px; right: -8px;
+  padding: 6px 20px 6px 14px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 4px 0 0 4px;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.15);
+  z-index: 10;
+}
+.ribbon-fixed   { background: #7c3aed; color: white; }
+.ribbon-percent { background: var(--red); color: white; }
+.ribbon-bxgy    { background: var(--amber); color: white; }
+.ribbon-free_qty{ background: var(--g2); color: white; }
+
+/* Savings badge */
+.savings-badge {
+  position: absolute;
+  top: 16px; left: 16px;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 99px;
+  box-shadow: 0 4px 12px rgba(220,38,38,0.4);
+  z-index: 10;
+}
+
+/* Bundle hero image or product grid preview */
+.bundle-preview {
+  height: 200px;
+  position: relative;
+  background: linear-gradient(135deg, var(--g-pale), var(--g-mid));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.bundle-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bundle-products-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 14px;
+  width: 100%;
+  height: 100%;
+}
+.bundle-products-grid.two-items {
+  grid-template-columns: repeat(2, 1fr);
+}
+.bundle-products-grid.four-plus {
+  grid-template-columns: repeat(4, 1fr);
+}
+.bundle-mini-product {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.bundle-mini-product img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.bundle-mini-product .mini-qty {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--g2);
+  margin-top: 4px;
+}
+.bundle-plus-more {
+  background: var(--g2);
+  color: white;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* Card body */
+.bundle-body {
+  padding: 20px 22px;
+}
+.bundle-badge-label {
+  display: inline-block;
+  background: var(--g-mid);
+  color: var(--g1);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  margin-bottom: 10px;
+  letter-spacing: 0.03em;
+}
+.bundle-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--gray-800);
+  margin: 0 0 6px;
+  font-family: 'DM Serif Display', serif;
+  line-height: 1.25;
+}
+.bundle-desc {
+  font-size: 13px;
+  color: var(--gray-600);
+  margin: 0 0 16px;
+  line-height: 1.55;
+}
+
+/* Deal highlight */
+.deal-highlight {
+  background: var(--g-pale);
+  border: 1.5px solid #a7f3d0;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.deal-highlight-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.deal-highlight-text {
+  flex: 1;
+}
+.deal-highlight-text strong {
+  font-size: 14px;
+  color: var(--g1);
+  display: block;
+  font-weight: 800;
+}
+.deal-highlight-text span {
+  font-size: 12px;
+  color: var(--g2);
+}
+
+/* Products list */
+.bundle-items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bundle-items-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gray-600);
+}
+.bundle-items-list li img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1.5px solid var(--gray-200);
+}
+.bundle-items-list li .item-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+.bundle-items-list li .item-qty {
+  background: var(--gray-100);
+  color: var(--gray-600);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.bundle-items-list li .item-price {
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+/* Price row */
+.bundle-price-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.price-effective {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--g1);
+  font-family: 'DM Serif Display', serif;
+}
+.price-mrp {
+  font-size: 16px;
+  color: #9ca3af;
+  text-decoration: line-through;
+  font-weight: 500;
+}
+.price-savings {
+  background: #fef2f2;
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+
+/* CTA button */
+.btn-add-bundle {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--g2), var(--g3));
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.02em;
+}
+.btn-add-bundle:hover {
+  background: linear-gradient(135deg, var(--g1), var(--g2));
+  transform: scale(1.01);
+  box-shadow: 0 6px 20px rgba(26,122,58,0.35);
+}
+.btn-add-bundle:active { transform: scale(0.99); }
+.btn-add-bundle.loading {
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+/* Timer */
+.bundle-timer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--red);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.timer-val {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+
+/* Toast */
+.bundle-toast {
+  position: fixed;
+  bottom: 28px; right: 28px;
+  background: white;
+  border: 1.5px solid #a7f3d0;
+  border-left: 4px solid var(--g3);
+  border-radius: 14px;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-800);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  max-width: 360px;
+}
+.bundle-toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+.bundle-toast.error {
+  border-left-color: var(--red);
+  border-color: #fca5a5;
+}
+
+/* Empty state */
+.empty-bundles {
+  text-align: center;
+  padding: 80px 24px;
+  grid-column: 1 / -1;
+}
+.empty-bundles .empty-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+.empty-bundles p {
+  color: var(--gray-600);
+  font-size: 16px;
+}
+
+/* How it works */
+.how-it-works {
+  background: var(--g-pale);
+  border-radius: var(--radius);
+  padding: 40px 32px;
+  margin-bottom: 48px;
+  border: 1.5px solid #a7f3d0;
+}
+.how-it-works h3 {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--g1);
+  margin: 0 0 24px;
+  font-family: 'DM Serif Display', serif;
+}
+.hiw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+}
+.hiw-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+.hiw-icon {
+  width: 56px;
+  height: 56px;
+  background: white;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.hiw-step h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--g1);
+  margin: 0;
+}
+.hiw-step p {
+  font-size: 12px;
+  color: var(--gray-600);
+  margin: 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .bundle-grid { grid-template-columns: 1fr; }
+  .bundles-main { padding: 32px 16px 60px; }
+  .how-it-works { padding: 28px 20px; }
+  .bundle-toast { left: 16px; right: 16px; bottom: 16px; }
+}
+</style>
+
+<!-- ── Hero ── -->
+<div class="bundles-hero">
+  <h1>🛍 Bundle Deals</h1>
+  <p>Buy more, save more — Curated bundles for every lifestyle</p>
+  <div class="hero-pills">
+    <span class="hero-pill">💰 Save up to 40%</span>
+    <span class="hero-pill">⚡ Limited Time Offers</span>
+    <span class="hero-pill">🚚 Free Delivery on Bundles</span>
+    <span class="hero-pill">✅ 1-Click Add to Cart</span>
+  </div>
+</div>
+
+<!-- ── Filter bar ── -->
+<div class="filter-bar">
+  <div class="filter-inner">
+    <button class="filter-btn active" onclick="filterBundles('all', this)">All Bundles</button>
+    <button class="filter-btn" onclick="filterBundles('fixed', this)">💎 Fixed Price</button>
+    <button class="filter-btn" onclick="filterBundles('percent', this)">🔥 % Discount</button>
+    <button class="filter-btn" onclick="filterBundles('bxgy', this)">🎁 Buy X Get Y</button>
+    <button class="filter-btn" onclick="filterBundles('free_qty', this)">📦 Custom Qty</button>
+  </div>
+</div>
+
+<!-- ── Main Content ── -->
+<div class="bundles-main">
+
+  <!-- How it works -->
+  <div class="how-it-works">
+    <h3>📋 How do Bundle Deals work?</h3>
+    <div class="hiw-grid">
+      <div class="hiw-step">
+        <div class="hiw-icon">🔍</div>
+        <h4>Choose a bundle</h4>
+        <p>Get the best deal according to your needs.</p>
+      </div>
+      <div class="hiw-step">
+        <div class="hiw-icon">🛒</div>
+        <h4>1-Click Add to Cart</h4>
+        <p>All products are added to cart with one click.</p>
+      </div>
+      <div class="hiw-step">
+        <div class="hiw-icon">💸</div>
+        <h4>Automatic Savings</h4>
+        <p>Discount is applied automatically, no coupon code required.</p>
+      </div>
+      <div class="hiw-step">
+        <div class="hiw-icon">🚀</div>
+        <h4>Fast Delivery</h4>
+        <p>Delivered together with all bundled products</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section header -->
+  <div class="section-header">
+    <h2>Available Bundle Deals</h2>
+    <span class="bundle-count">{{ bundles|length }} bundles</span>
+  </div>
+
+  <!-- Bundle grid -->
+  <div class="bundle-grid" id="bundleGrid">
+
+    {% if not bundles %}
+    <div class="empty-bundles">
+      <div class="empty-icon">📦</div>
+      <p>No bundles are available yet.<br>Coming soon — check back soon!</p>
+    </div>
+    {% endif %}
+
+    {% for b in bundles %}
+    {% set preview_items = b.items[:4] %}
+    {% set extra_count = b.items|length - 4 %}
+
+    <div class="bundle-card" data-deal-type="{{ b.deal_type }}">
+
+      <!-- Deal ribbon -->
+      <div class="deal-ribbon ribbon-{{ b.deal_type }}">
+        {% if b.deal_type == 'fixed' %}💎 Fixed Price
+        {% elif b.deal_type == 'percent' %}🔥 {{ b.discount_pct|int }}% OFF
+        {% elif b.deal_type == 'bxgy' %}🎁 Buy {{ b.buy_qty }} Get {{ b.free_qty }}
+        {% else %}📦 Custom Bundle
+        {% endif %}
+      </div>
+
+      <!-- Savings badge -->
+      {% if b.savings > 0 %}
+      <div class="savings-badge">Save ₹{{ b.savings|int }}</div>
+      {% endif %}
+
+      <!-- Preview -->
+      <div class="bundle-preview">
+        {% if b.image %}
+          <img src="{{ b.image }}" alt="{{ b.name }}" class="bundle-preview-img">
+        {% else %}
+          <div class="bundle-products-grid
+            {% if b.items|length == 2 %}two-items{% elif b.items|length >= 4 %}four-plus{% endif %}">
+            {% for item in preview_items %}
+              <div class="bundle-mini-product">
+                <img src="{{ item.product.image }}" alt="{{ item.product.name }}">
+                <span class="mini-qty">×{{ item.quantity }}</span>
+              </div>
+            {% endfor %}
+            {% if extra_count > 0 %}
+              <div class="bundle-mini-product bundle-plus-more">+{{ extra_count }}</div>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Body -->
+      <div class="bundle-body">
+
+        {% if b.badge_label %}
+        <div class="bundle-badge-label">{{ b.badge_label }}</div>
+        {% endif %}
+
+        <h3 class="bundle-name">{{ b.name }}</h3>
+
+        {% if b.description %}
+        <p class="bundle-desc">{{ b.description }}</p>
+        {% endif %}
+
+        <!-- Deal highlight -->
+        <div class="deal-highlight">
+          <div class="deal-highlight-icon">
+            {% if b.deal_type == 'fixed' %}💎
+            {% elif b.deal_type == 'percent' %}🔥
+            {% elif b.deal_type == 'bxgy' %}🎁
+            {% else %}📦{% endif %}
+          </div>
+          <div class="deal-highlight-text">
+  {% if b.deal_type == 'fixed' %}
+    <strong>Fixed Bundle Price: ₹{{ b.fixed_price|int }}</strong>
+    <span>MRP ₹{{ b.mrp_total|int }} — Buy directly from here!</span>
+  {% elif b.deal_type == 'percent' %}
+    <strong>{{ b.discount_pct|int }}% Discount on Full Bundle</strong>
+    <span>MRP ₹{{ b.mrp_total|int }} — Save {{ b.discount_pct|int }}% on this bundle</span>
+  {% elif b.deal_type == 'bxgy' %}
+    <strong>Buy {{ b.buy_qty }} Get {{ b.free_qty }} Free!</strong>
+    <span>The {{ b.free_qty }} cheapest item(s) will be free</span>
+  {% else %}
+    <strong>Custom Quantity Bundle</strong>
+    <span>Each product has an ideal quantity pre-set</span>
+  {% endif %}
+</div>
+        </div>
+
+        <!-- Products list -->
+        <ul class="bundle-items-list">
+          {% for item in b.items %}
+          <li>
+            <img src="{{ item.product.image }}" alt="{{ item.product.name }}">
+            <span class="item-name">{{ item.product.name }}</span>
+            <span class="item-qty">×{{ item.quantity }}</span>
+            <span class="item-price">₹{{ item.product.price|int }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <!-- Timer if ends_at set -->
+        {% if b.ends_at %}
+        <div class="bundle-timer">
+          ⏰ Ends in:
+          <span class="timer-val" data-end="{{ b.ends_at.strftime('%Y-%m-%dT%H:%M:%S') }}">--:--:--</span>
+        </div>
+        {% endif %}
+
+        <!-- Price row -->
+        <div class="bundle-price-row">
+          <span class="price-effective">₹{{ b.effective_price|int }}</span>
+          {% if b.mrp_total != b.effective_price %}
+          <span class="price-mrp">₹{{ b.mrp_total|int }}</span>
+          {% endif %}
+          {% if b.savings_pct > 0 %}
+          <span class="price-savings">{{ b.savings_pct }}% off</span>
+          {% endif %}
+        </div>
+
+        <!-- CTA -->
+        {% if current_user.is_authenticated and current_user.role == 'customer' %}
+        <button class="btn-add-bundle" onclick="addBundleToCart({{ b.id }}, this)">
+          🛒 Add Bundle to Cart
+        </button>
+        {% else %}
+        <a href="#" data-bs-toggle="modal" data-bs-target="#loginModal"
+           class="btn-add-bundle" style="text-decoration:none;">
+          🔐 Login to Add Bundle
+        </a>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endfor %}
+
+  </div><!-- /bundle-grid -->
+</div><!-- /bundles-main -->
+
+<!-- Toast -->
+<div class="bundle-toast" id="bundleToast">
+  <span id="bundleToastIcon">✅</span>
+  <span id="bundleToastMsg">Bundle added to cart!</span>
+</div>
+
+<script>
+// ── Filter ────────────────────────────────────────────────────
+function filterBundles(type, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.querySelectorAll('.bundle-card').forEach(card => {
+    if (type === 'all' || card.dataset.dealType === type) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+async function addBundleToCart(bundleId, btn) {
+  btn.classList.add('loading');
+  btn.innerHTML = '⏳ Adding...';
+
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+  try {
+    const res = await fetch(`/api/bundle/${bundleId}/add-to-cart`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),  
+    });
+    const data = await res.json();
+
+    showToast(data.success, data.message);
+
+    if (data.success) {
+      btn.innerHTML = '✅ Added to Cart!';
+      btn.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+      setTimeout(() => {
+        btn.innerHTML = '🛒 Add Bundle to Cart';
+        btn.style.background = '';
+        btn.classList.remove('loading');
+      }, 2500);
+    } else {
+      btn.innerHTML = '🛒 Add Bundle to Cart';
+      btn.classList.remove('loading');
+    }
+  } catch(e) {
+    showToast(false, 'Network error! Try again.');
+    btn.innerHTML = '🛒 Add Bundle to Cart';
+    btn.classList.remove('loading');
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+let toastTimer;
+function showToast(success, msg) {
+  const toast = document.getElementById('bundleToast');
+  document.getElementById('bundleToastIcon').textContent = success ? '✅' : '❌';
+  document.getElementById('bundleToastMsg').textContent  = msg;
+  toast.classList.toggle('error', !success);
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+// ── Countdown timers ──────────────────────────────────────────
+document.querySelectorAll('.timer-val[data-end]').forEach(el => {
+  function tick() {
+    const endMs = new Date(el.dataset.end + 'Z').getTime();
+    const rem   = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+    if (rem === 0) { el.textContent = 'Expired'; return; }
+    const h = Math.floor(rem / 3600);
+    const m = Math.floor((rem % 3600) / 60);
+    const s = rem % 60;
+    el.textContent = [h,m,s].map(x => String(x).padStart(2,'0')).join(':');
+    setTimeout(tick, 1000);
+  }
+  tick();
+});
+</script>
+{% endblock %}

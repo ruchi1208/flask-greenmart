@@ -211,48 +211,48 @@ def generate_pos_receipt(order, customer_name):
     c.drawRightString(PAGE_W - MARGIN - 3*mm, y - 4.5*mm, f"Rs.{grand:.2f}")
     y -= 10*mm
 
-    # ── 9. QR CODE ──────────────────────────────────────────
-    y -= 2*mm
-    tracking = order.tracking_id or f"ORD{order.id}"
-    qr = qrcode.QRCode(version=1,
-                       error_correction=qrcode.constants.ERROR_CORRECT_H,
-                       box_size=4, border=2)
-    qr.add_data(f"GreenMart Order: {tracking}")
-    qr.make(fit=True)
-    qr_img    = qr.make_image(fill_color="#1a5c2a", back_color="white")
-    qr_buffer = io.BytesIO()
-    qr_img.save(qr_buffer, format="PNG")
-    qr_buffer.seek(0)
+    # # ── 9. QR CODE ──────────────────────────────────────────
+    # y -= 2*mm
+    # tracking = order.tracking_id or f"ORD{order.id}"
+    # qr = qrcode.QRCode(version=1,
+    #                    error_correction=qrcode.constants.ERROR_CORRECT_H,
+    #                    box_size=4, border=2)
+    # qr.add_data(f"GreenMart Order: {tracking}")
+    # qr.make(fit=True)
+    # qr_img    = qr.make_image(fill_color="#1a5c2a", back_color="white")
+    # qr_buffer = io.BytesIO()
+    # qr_img.save(qr_buffer, format="PNG")
+    # qr_buffer.seek(0)
 
-    qr_size = 18*mm
-    qr_x    = (PAGE_W - qr_size) / 2
-    c.drawImage(ImageReader(qr_buffer), qr_x, y - qr_size,
-                width=qr_size, height=qr_size)
+    # qr_size = 18*mm
+    # qr_x    = (PAGE_W - qr_size) / 2
+    # c.drawImage(ImageReader(qr_buffer), qr_x, y - qr_size,
+    #             width=qr_size, height=qr_size)
 
-    c.setFont("Helvetica", 6)
-    c.setFillColor(GRAY_MID)
-    c.drawCentredString(PAGE_W/2, y - qr_size - 3*mm, "Scan to track your order")
-    y -= qr_size + 6*mm
+    # c.setFont("Helvetica", 6)
+    # c.setFillColor(GRAY_MID)
+    # c.drawCentredString(PAGE_W/2, y - qr_size - 3*mm, "Scan to track your order")
+    # y -= qr_size + 6*mm
 
-    # ── 10. SAVINGS BADGE ───────────────────────────────────
-    c.setFillColor(colors.HexColor("#fff9e6"))
-    c.roundRect(MARGIN, y - 8*mm, CONTENT_W, 8*mm, 2*mm, fill=1, stroke=0)
-    c.setStrokeColor(colors.HexColor("#f59e0b"))
-    c.roundRect(MARGIN, y - 8*mm, CONTENT_W, 8*mm, 2*mm, fill=0, stroke=1)
-    c.setFillColor(colors.HexColor("#92400e"))
-    c.setFont("Helvetica-Bold", 7)
-    c.drawCentredString(PAGE_W/2, y - 5*mm,
-                        f"You saved Rs.{tax:.2f} with GreenMart today!")
-    y -= 11*mm
+    # # ── 10. SAVINGS BADGE ───────────────────────────────────
+    # c.setFillColor(colors.HexColor("#fff9e6"))
+    # c.roundRect(MARGIN, y - 8*mm, CONTENT_W, 8*mm, 2*mm, fill=1, stroke=0)
+    # c.setStrokeColor(colors.HexColor("#f59e0b"))
+    # c.roundRect(MARGIN, y - 8*mm, CONTENT_W, 8*mm, 2*mm, fill=0, stroke=1)
+    # c.setFillColor(colors.HexColor("#92400e"))
+    # c.setFont("Helvetica-Bold", 7)
+    # c.drawCentredString(PAGE_W/2, y - 5*mm,
+    #                     f"You saved Rs.{tax:.2f} with GreenMart today!")
+    # y -= 11*mm
 
-    # ── 11. OFFER STRIP ─────────────────────────────────────
-    c.setFillColor(GREEN_MID)
-    c.rect(0, y - 8*mm, PAGE_W, 8*mm, fill=1, stroke=0)
-    c.setFillColor(WHITE)
-    c.setFont("Helvetica-Bold", 7)
-    c.drawCentredString(PAGE_W/2, y - 5*mm,
-                        "Next Order: Use code FRESH10 for 10% off!")
-    y -= 11*mm
+    # # ── 11. OFFER STRIP ─────────────────────────────────────
+    # c.setFillColor(GREEN_MID)
+    # c.rect(0, y - 8*mm, PAGE_W, 8*mm, fill=1, stroke=0)
+    # c.setFillColor(WHITE)
+    # c.setFont("Helvetica-Bold", 7)
+    # c.drawCentredString(PAGE_W/2, y - 5*mm,
+    #                     "Next Order: Use code FRESH10 for 10% off!")
+    # y -= 11*mm
 
     # ── 12. THANK YOU MESSAGE ───────────────────────────────
     c.setFont("Helvetica-Bold", 9)

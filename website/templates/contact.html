@@ -1,56 +1,208 @@
 {% extends "base.html" %}
 
-{% block title %}Contect Us | Green Mart{% endblock %}
+{% block title %}Contact Us | GreenMart{% endblock %}
 
 {% block content %}
 
-<div class="container-fluid p-0">
-    <!-- MAP SECTION -->
-    <div class="w-100" style="border: 2px solid #ddd;">
-        <iframe 
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d241317.11609736543!2d72.74109700708586!3d23.020497753089857!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x395e9b28e1c1b59b%3A0x9ef76e9a7e951a06!2sAhmedabad%2C%20Gujarat!5e0!3m2!1sen!2qin!4v1708603300000"
-            width="100%" 
-            height="400" 
-            style="border:0;" 
-            allowfullscreen="" 
-            loading="lazy">
-        </iframe>
-    </div>
-</div>
-<div class="container my-5">
-    <h3 class="text-center mb-4 fw-bold">Leave a Message</h3>
+<style>
+  .contact-info-card { border-left: 4px solid #0B7D2A; transition: transform .2s, box-shadow .2s; }
+  .contact-info-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+  .contact-icon { width: 48px; height: 48px; background: #d1fae5; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .form-control:focus { border-color: #0B7D2A; box-shadow: 0 0 0 0.2rem rgba(11,125,42,.15); }
+  .form-floating > .form-control:focus { border-color: #0B7D2A; box-shadow: 0 0 0 0.2rem rgba(11,125,42,.15); }
+  .form-floating > label { color: #6c757d; }
+  .btn-success { background-color: #0B7D2A; border-color: #0B7D2A; }
+  .btn-success:hover { background-color: #096622; border-color: #096622; }
+  .social-btn { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform .2s; font-size: 18px; }
+  .social-btn:hover { transform: translateY(-2px); }
+</style>
 
-    <form method="POST" class="row g-3 mx-auto" style="max-width: 700px;">
-
-    <div class="col-md-12">
-        <input type="text" name="name" class="form-control p-3" placeholder="Name" required>
-    </div>
-
-    <div class="col-md-12">
-         <input type="email" name="email" class="form-control p-3" placeholder="Email" required>
-    </div>
-
-    <div class="col-md-12">
-         <input type="text" name="phone" class="form-control p-3" placeholder="Contact Number" required>
-    </div>
-
-    <div class="form-floating mb-3">
-  <textarea class="form-control" placeholder="Your Message" id="message" name="message" style="height: 120px;" required></textarea>
-  <label for="message">Your Message</label>
-  <div class="invalid-feedback">
-    Please enter your message!
+<!-- Hero Banner -->
+<div style="background: linear-gradient(135deg, #0B7D2A, #1a9e3c); padding: 60px 0;">
+  <div class="container text-center text-white">
+    <h1 class="fw-bold mb-2">Contact Us</h1>
+    <p class="mb-0 opacity-75">We'd love to hear from you. Reach out anytime!</p>
+    <nav aria-label="breadcrumb" class="mt-3">
+      <ol class="breadcrumb justify-content-center mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('views.home') }}" class="text-white text-decoration-none opacity-75">Home</a></li>
+        <li class="breadcrumb-item active text-white">Contact Us</li>
+      </ol>
+    </nav>
   </div>
 </div>
 
-
-    <div class="col-md-12 text-center">
-        <button class="btn btn-success px-4 py-2">Send Message</button>
-    </div>
-
-</form>
-
+<!-- Map -->
+<div class="w-100" style="border-bottom: 3px solid #0B7D2A;">
+  <iframe
+    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d241317.11609736543!2d72.74109700708586!3d23.020497753089857!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x395e9b28e1c1b59b%3A0x9ef76e9a7e951a06!2sAhmedabad%2C%20Gujarat!5e0!3m2!1sen!2qin!4v1708603300000"
+    width="100%" height="380" style="border:0; display:block;" allowfullscreen loading="lazy">
+  </iframe>
 </div>
 
+<div class="container my-5">
+  <div class="row g-4">
 
+    <!-- LEFT: Contact Info -->
+    <div class="col-lg-4">
+      <h4 class="fw-bold mb-1" style="color:#0B7D2A;">Get in Touch</h4>
+      <p class="text-muted mb-4" style="font-size:14px;">Our team is available to help you with any questions or concerns.</p>
+
+      <!-- Info Cards -->
+      <div class="card contact-info-card border shadow-sm rounded-3 p-3 mb-3">
+        <div class="d-flex align-items-start gap-3">
+          <div class="contact-icon">
+            <i class="bi bi-geo-alt-fill text-success fs-5"></i>
+          </div>
+          <div>
+            <div class="fw-bold mb-1" style="font-size:14px;">Our Address</div>
+            <div class="text-muted" style="font-size:13px;">GreenMart, Sardar Patel Ring Rd,<br>Ahmedabad, Gujarat 380015</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card contact-info-card border shadow-sm rounded-3 p-3 mb-3">
+        <div class="d-flex align-items-start gap-3">
+          <div class="contact-icon">
+            <i class="bi bi-telephone-fill text-success fs-5"></i>
+          </div>
+          <div>
+            <div class="fw-bold mb-1" style="font-size:14px;">Phone</div>
+            <div class="text-muted" style="font-size:13px;">+1800 090 098<br>Mon – Sat, 9am – 6pm</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card contact-info-card border shadow-sm rounded-3 p-3 mb-3">
+        <div class="d-flex align-items-start gap-3">
+          <div class="contact-icon">
+            <i class="bi bi-envelope-fill text-success fs-5"></i>
+          </div>
+          <div>
+            <div class="fw-bold mb-1" style="font-size:14px;">Email</div>
+            <div class="text-muted" style="font-size:13px;">support@greenmart.com<br>We reply within 24 hours</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card contact-info-card border shadow-sm rounded-3 p-3 mb-4">
+        <div class="d-flex align-items-start gap-3">
+          <div class="contact-icon">
+            <i class="bi bi-clock-fill text-success fs-5"></i>
+          </div>
+          <div>
+            <div class="fw-bold mb-1" style="font-size:14px;">Working Hours</div>
+            <div class="text-muted" style="font-size:13px;">Mon – Sat: 9:00 AM – 6:00 PM<br>Sunday: Closed</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Social Links -->
+      <div class="fw-bold mb-2" style="font-size:14px;">Follow Us</div>
+      <div class="d-flex gap-2">
+        <a href="#" class="social-btn bg-primary text-white"><i class="bi bi-facebook"></i></a>
+        <a href="#" class="social-btn text-white" style="background:#E1306C;"><i class="bi bi-instagram"></i></a>
+        <a href="#" class="social-btn text-white" style="background:#1DA1F2;"><i class="bi bi-twitter-x"></i></a>
+        <a href="#" class="social-btn text-white" style="background:#25D366;"><i class="bi bi-whatsapp"></i></a>
+      </div>
+    </div>
+
+    <!-- RIGHT: Contact Form -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5">
+        <h4 class="fw-bold mb-1" style="color:#0B7D2A;">Send Us a Message</h4>
+        <p class="text-muted mb-4" style="font-size:14px;">Fill in the form below and we'll get back to you as soon as possible.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show rounded-3 mb-4" role="alert">
+                <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>{{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('views.contact') }}" novalidate id="contactForm">
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input type="text" name="name" id="name" class="form-control rounded-3" placeholder="Full Name" required>
+                <label for="name"><i class="bi bi-person me-1"></i>Full Name</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input type="email" name="email" id="email" class="form-control rounded-3" placeholder="Email Address" required>
+                <label for="email"><i class="bi bi-envelope me-1"></i>Email Address</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input type="tel" name="phone" id="phone" class="form-control rounded-3" placeholder="Phone Number" required>
+                <label for="phone"><i class="bi bi-telephone me-1"></i>Phone Number</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating">
+                <select name="subject" id="subject" class="form-select rounded-3" required>
+                  <option value="" disabled selected>Select a subject</option>
+                  <option value="Order Issue">Order Issue</option>
+                  <option value="Product Query">Product Query</option>
+                  <option value="Delivery Problem">Delivery Problem</option>
+                  <option value="Return & Refund">Return & Refund</option>
+                  <option value="Other">Other</option>
+                </select>
+                <label for="subject"><i class="bi bi-tag me-1"></i>Subject</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating">
+                <textarea name="message" id="message" class="form-control rounded-3" placeholder="Your Message" style="height:140px;" required></textarea>
+                <label for="message"><i class="bi bi-chat-text me-1"></i>Your Message</label>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <button type="submit" class="btn btn-success px-5 py-2 fw-bold" style="border-radius:8px; font-size:15px;">
+                <i class="bi bi-send me-2"></i>Send Message
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Trust badges -->
+<div class="bg-light border-top py-4 mb-2">
+  <div class="container">
+    <div class="row text-center g-3">
+      <div class="col-6 col-md-3">
+        <i class="bi bi-headset text-success fs-4 d-block mb-1"></i>
+        <div class="fw-semibold" style="font-size:13px;">24/7 Support</div>
+        <div class="text-muted" style="font-size:12px;">Always here for you</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <i class="bi bi-lightning-charge text-success fs-4 d-block mb-1"></i>
+        <div class="fw-semibold" style="font-size:13px;">Fast Response</div>
+        <div class="text-muted" style="font-size:12px;">Within 24 hours</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <i class="bi bi-shield-check text-success fs-4 d-block mb-1"></i>
+        <div class="fw-semibold" style="font-size:13px;">Secure & Private</div>
+        <div class="text-muted" style="font-size:12px;">Your data is safe</div>
+      </div>
+      <div class="col-6 col-md-3">
+        <i class="bi bi-chat-heart text-success fs-4 d-block mb-1"></i>
+        <div class="fw-semibold" style="font-size:13px;">Friendly Team</div>
+        <div class="text-muted" style="font-size:12px;">Happy to help</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}

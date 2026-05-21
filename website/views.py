@@ -16,7 +16,7 @@ from flask_login import (
     current_user,
     login_required,
 )
-
+from .models import Testimonial, RewardWallet, RewardTransaction, TestimonialRewardConfig
 from werkzeug.security import generate_password_hash
 from functools import wraps
 import io
@@ -24,6 +24,7 @@ import os
 import base64
 import qrcode
 from datetime import datetime
+from .models import BundleGroup, BundleItem
 # Models
 from .models import (
     db,
@@ -37,12 +38,19 @@ from .models import (
     Category,
     Address,
     generate_tracking_id,
+    ProductVariant
 )
+from .models import ProductSale
+from datetime import datetime
+from . import mail
+from flask_mail import Message
+from . import csrf
+from .models import Review
 from .models import User, Product, Order, Coupon, DeliveryZone 
 # Forms & Products
 from .forms import SignupForm, LoginForm
 from .products import all_products
-
+from .models import FlashSale, FlashSaleItem
 # ✅ EMAIL FUNCTIONS
 from .emails import (
     send_order_confirmed,
@@ -50,6 +58,10 @@ from .emails import (
     send_payment_confirmed,
     send_welcome_email,
 )
+from .models import NewsletterSubscriber
+import csv
+import io
+
 
 # ReportLab (PDF / POS / Invoice)
 from reportlab.platypus import (
@@ -96,12 +108,96 @@ def customer_required(f):
 @views.route("/search")
 def search():
     q = request.args.get("q", "").strip()
+
+    # AJAX / live suggestion call mate JSON
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        if not q:
+            return jsonify([])
+        products = Product.query.filter(Product.name.ilike(f"%{q}%")).limit(8).all()
+        return jsonify([{
+            "id":    p.id,
+            "name":  p.name,
+            "price": p.price,
+            "image": p.image,
+            "stock": p.stock,
+        } for p in products])
+
+    # Normal page load mate template
+    products = Product.query.filter(Product.name.ilike(f"%{q}%")).all() if q else []
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+    return render_template("search.html",
+                           products=products,
+                           query=q,
+                           login_form=login_form,
+                           signup_form=signup_form)
+
+
+# 404 fix — /api/search_suggestions route add karo
+@views.route("/api/search_suggestions")
+def search_suggestions():
+    q = request.args.get("q", "").strip()
     if not q:
         return jsonify([])
-    products = Product.query.filter(Product.name.ilike(f"%{q}%")).limit(10).all()
-    return jsonify(
-        [{"id": p.id, "name": p.name, "price": p.price, "image": p.image} for p in products]
-    )
+    products = Product.query.filter(Product.name.ilike(f"%{q}%")).limit(8).all()
+    return jsonify([{
+        "id":    p.id,
+        "name":  p.name,
+        "price": p.price,
+        "image": "/" + p.image if not p.image.startswith("/") else p.image,
+        "stock": p.stock,
+    } for p in products])
+
+
+@views.route('/newsletter/subscribe', methods=['POST'])
+def newsletter_subscribe():
+    email = request.form.get('email', '').strip().lower()
+
+    if not email:
+        return jsonify({'success': False, 'message': 'Email દાખલ કરો!'})
+
+    existing = NewsletterSubscriber.query.filter_by(email=email).first()
+    if existing:
+        if existing.is_active:
+            return jsonify({'success': False, 'message': '⚠️ આ email already subscribed છે!'})
+        existing.is_active = True
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Welcome back! Re-subscribed ✅'})
+
+    subscriber = NewsletterSubscriber(email=email)
+    db.session.add(subscriber)
+    db.session.commit()
+
+    try:
+        msg = Message(subject="Welcome to GreenMart Newsletter! 🌿", recipients=[email])
+        msg.html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;
+                    border-radius:12px;overflow:hidden;border:1px solid #e0e0e0;">
+            <div style="background:linear-gradient(135deg,#1a4a22,#2e7d32);
+                        padding:32px;text-align:center;">
+                <h1 style="color:white;margin:0;font-size:26px;">🌿 GreenMart</h1>
+                <p style="color:#a5d6a7;margin:6px 0 0;">Fresh & Organic</p>
+            </div>
+            <div style="padding:32px;background:#fff;">
+                <h2 style="color:#2e7d32;">You're subscribed! 🎉</h2>
+                <p style="color:#555;line-height:1.7;">
+                    Thank you for subscribing. You'll be the first to know about:</p>
+                <ul style="color:#555;line-height:2;">
+                    <li>🛒 Exclusive deals & discounts</li>
+                    <li>🥦 Fresh arrivals & seasonal produce</li>
+                    <li>🎁 Special offers & coupons</li>
+                </ul>
+            </div>
+            <div style="background:#f5f5f5;padding:16px;text-align:center;">
+                <p style="color:#888;font-size:12px;margin:0;">© 2026 GreenMart</p>
+            </div>
+        </div>"""
+        mail.send(msg)
+    except Exception as e:
+        print(f"Newsletter Email Error: {e}")
+
+    return jsonify({'success': True, 'message': '🎉 Subscribed! Check your email.'})
+
 
 
 @views.route("/update_profile", methods=["POST"])
@@ -141,6 +237,10 @@ def change_password():
 # ------------------------------------------------
 # HOME
 # ------------------------------------------------
+# ─────────────────────────────────────────────────────────────────────
+# REPLACE your existing home() function in views.py with this version
+# ─────────────────────────────────────────────────────────────────────
+
 @views.route("/", methods=["GET", "POST"])
 def home():
     categories = Category.query.all()
@@ -150,6 +250,20 @@ def home():
 
     signup_form = SignupForm()
     login_form  = LoginForm()
+
+    # ✅ Recently Viewed — server side
+    rv_products = []
+    if current_user.is_authenticated:
+        from .models import RecentlyViewed
+        rv_items = RecentlyViewed.query.filter_by(user_id=current_user.id)\
+                    .order_by(RecentlyViewed.viewed_at.desc()).limit(8).all()
+        rv_products = [item.product for item in rv_items if item.product]
+    else:
+        rv_ids = session.get("recently_viewed", [])
+        for pid in rv_ids:
+            p = Product.query.get(pid)
+            if p:
+                rv_products.append(p)
 
     if login_form.validate_on_submit() and login_form.submit.data:
         user = User.query.filter_by(email=login_form.email.data).first()
@@ -175,60 +289,59 @@ def home():
             user.set_password(signup_form.password.data)
             db.session.add(user)
             db.session.commit()
-
             try:
                 send_welcome_email(user)
             except Exception as e:
                 print("Welcome Email Error:", e)
-
             flash("Account created! Please login.", "success")
             return redirect(url_for("views.home"))
 
+    best_sellers = Product.query.filter(Product.id <= 10).all()
+    trending     = Product.query.filter(Product.id > 10, Product.id <= 18).all()
+    tab_best     = Product.query.filter(Product.id <= 10).all()
+    tab_bread    = Product.query.join(Category).filter(Category.name == "Bakery").limit(4).all()
+    tab_juices   = Product.query.join(Category).filter(Category.name == "Juices").limit(4).all()
+    tab_organic  = Product.query.join(Category).filter(
+        Category.name.in_(["Grains", "Nuts & Seeds"])
+    ).limit(5).all()
+    tab_fruits   = Product.query.join(Category).filter(
+        Category.name.in_(["Fruits", "Vegetables"])
+    ).limit(6).all()
+
     return render_template(
         "home.html",
-        signup_form=signup_form,
-        login_form=login_form,
-        user=current_user,
-        categories=categories,
-        products=all_products,
-        title="Farm Fresh",
-        subtitle="Organic & Healthy",
-        description="Donec sed mauris non quam molestie imperdiet.<br>Integer ullamcorper, purus sit amet hendrerit tincidunt",
-        image1="/static/images/1.jpg",
-        image2="/static/images/2.jpg",
-        image3="/static/images/3.jpg",
-        image4="/static/images/4.jpg",
-        image5="/static/images/5.jpg",
-        image6="/static/images/tomato.jpg",
-        image7="/static/images/juice.jpg",
-        image8="/static/images/brocoli.jpg",
-        image9="/static/images/quinoa.jpg",
-        image10="/static/images/grapes.jpg",
-        image11="/static/images/oats.jpg",
-        image12="/static/images/milk.jpg",
-        image13="/static/images/spice.jpg",
-        image14="/static/images/avocado.jpg",
-        image15="/static/images/nuts.jpg",
-        image16="/static/images/dailyuse.jpg",
-        image17="/static/images/bread.jpg",
-        image18="/static/images/org juice.jpg",
-        image19="/static/images/discount.png",
-        image20="/static/images/orgjuice.jpg",
-        image21="/static/images/orgfruit.jpg",
-        image22="/static/images/b1.jpg",
-        image23="/static/images/b2.jpg",
-        image24="/static/images/b3.jpg",
-        image25="/static/images/organic.jpg",
-        image26="/static/images/orange.jpg",
-        image27="/static/images/mix.jpg",
-        image28="/static/images/green.jpg",
-        image29="/static/images/almonds.jpg",
-        image30="/static/images/chia.jpg",
-        image31="/static/images/Brown Rice.jpg",
-        image32="/static/images/jaggary.jpg",
-        image33="/static/images/spinach.jpg",
-        image34="/static/images/apple.jpg",
-        image35="/static/images/testimonial.jpg",
+        testimonials=Testimonial.query.filter_by(status='approved')
+            .order_by(Testimonial.is_featured.desc(), Testimonial.moderated_at.desc())
+            .limit(6).all(),
+
+        signup_form  = signup_form,
+        login_form   = login_form,
+        user         = current_user,
+        categories   = categories,
+        best_sellers = best_sellers,
+        trending     = trending,
+        tab_best     = tab_best,
+        tab_bread    = tab_bread,
+        tab_juices   = tab_juices,
+        tab_organic  = tab_organic,
+        tab_fruits   = tab_fruits,
+        rv_products  = rv_products,
+
+        title       = "Farm Fresh",
+        subtitle    = "Organic & Healthy",
+        description = "Donec sed mauris non quam molestie imperdiet.<br>Integer ullamcorper, purus sit amet hendrerit tincidunt",
+        image1  = "/static/images/1.jpg",
+        image2  = "/static/images/2.jpg",
+        image3  = "/static/images/3.jpg",
+        image4  = "/static/images/4.jpg",
+        image5  = "/static/images/5.jpg",
+        image16 = "/static/images/dailyuse.jpg",
+        image17 = "/static/images/bread.jpg",
+        image18 = "/static/images/org-juice.jpg",
+        image19 = "/static/images/discount.png",
+        image20 = "/static/images/orgjuice.jpg",
+        image21 = "/static/images/orgfruit.jpg",
+        image35 = "/static/images/testimonial.jpg",
     )
 
 
@@ -251,12 +364,19 @@ def profile():
     login_form  = LoginForm()
     signup_form = SignupForm()
     orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.id.desc()).all()
+    wallet = RewardWallet.query.filter_by(user_id=current_user.id).first()
+    txns   = (RewardTransaction.query
+              .filter_by(user_id=current_user.id)
+              .order_by(RewardTransaction.created_at.desc())
+              .limit(30).all())
     return render_template(
         "profile.html",
         user=current_user,
         orders=orders,
         login_form=login_form,
         signup_form=signup_form,
+        wallet=wallet,
+        txns=txns,
     )
 
 
@@ -271,37 +391,134 @@ def orders():
             product = Product.query.get(item.product_id)
             if product:
                 items.append({
-                    "name": item.name,
+                    "name":     product.name,        
                     "quantity": item.quantity,
-                    "price": item.price,
+                    "price":    item.price,
                     "subtotal": item.price * item.quantity,
                 })
         order_list.append({
-            "id": f"ORD{order.id}",
+            "id":           f"ORD{order.id}",
             "total_amount": order.total_amount,
-            "status": order.status,
-            "tracking_id": order.tracking_id or "N/A",
-            "created_at": order.created_at.strftime("%d-%m-%Y %H:%M"),
-            "items": items,
+            "status":       order.status,
+            "tracking_id":  order.tracking_id or "N/A",
+            "created_at":   order.created_at.strftime("%d-%m-%Y %H:%M"),
+            "items":        items,
         })
     return render_template("orders.html", orders=order_list)
-
 
 # ------------------------------------------------
 # PRODUCT DETAIL
 # ------------------------------------------------
 @views.route("/product/<int:product_id>")
 def product_detail(product_id):
-    product = next((p for p in all_products if p["id"] == product_id), None)
+    product  = Product.query.get_or_404(product_id)
+    reviews  = Review.query.filter_by(product_id=product_id)\
+                           .order_by(Review.created_at.desc()).all()
+    avg_rating = round(sum(r.rating for r in reviews) / len(reviews), 1) if reviews else 0
+
+    similar_products = Product.query.filter(
+        Product.category_id == product.category_id,
+        Product.id != product_id
+    ).limit(4).all()
+
+    # ✅ DB ma recently viewed save karo (only logged in users)
+    if current_user.is_authenticated:
+        from .models import RecentlyViewed
+        existing = RecentlyViewed.query.filter_by(
+            user_id=current_user.id, product_id=product_id
+        ).first()
+        if existing:
+            existing.viewed_at = datetime.utcnow()  # timestamp refresh
+        else:
+            # Max 8 items rakho — oldest delete karo
+            count = RecentlyViewed.query.filter_by(user_id=current_user.id).count()
+            if count >= 8:
+                oldest = RecentlyViewed.query.filter_by(user_id=current_user.id)\
+                            .order_by(RecentlyViewed.viewed_at.asc()).first()
+                if oldest:
+                    db.session.delete(oldest)
+            rv = RecentlyViewed(user_id=current_user.id, product_id=product_id)
+            db.session.add(rv)
+        db.session.commit()
+
+    # Session fallback for guests
+    else:
+        viewed = session.get("recently_viewed", [])
+        if product_id in viewed:
+            viewed.remove(product_id)
+        viewed.insert(0, product_id)
+        session["recently_viewed"] = viewed[:8]
+        session.modified = True
+
     login_form  = LoginForm()
     signup_form = SignupForm()
-    if product:
-        return render_template(
-            "quick_view.html",
-            product=product,
-            login_form=login_form,
-            signup_form=signup_form,
-        )
+    return render_template("quick_view.html",
+        product=product,
+        reviews=reviews,
+        avg_rating=avg_rating,
+        similar_products=similar_products,
+        login_form=login_form,
+        signup_form=signup_form,
+    )
+        
+# ================================================
+# RECENTLY VIEWED
+# ================================================
+@views.route("/api/recently-viewed")
+def recently_viewed_api():
+    ids = session.get("recently_viewed", [])
+    products = []
+    for pid in ids:
+        p = Product.query.get(pid)
+        if p:
+            products.append({
+                "id":    p.id,
+                "name":  p.name,
+                "price": p.price,
+                "image": p.image,
+                "stock": p.stock,
+                "category": p.category.name if p.category else "",
+            })
+    return jsonify(products)
+
+
+@views.route("/api/clear-recently-viewed", methods=["POST"])
+@login_required
+def clear_recently_viewed():
+    from .models import RecentlyViewed
+    if current_user.is_authenticated:
+        RecentlyViewed.query.filter_by(user_id=current_user.id).delete()
+        db.session.commit()
+    session.pop("recently_viewed", None)
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({"success": True})
+    return redirect(url_for("views.home"))
+    
+@views.route("/product/<int:product_id>/review", methods=["POST"])
+@login_required
+def add_review(product_id):
+    from flask_login import current_user
+    rating  = int(request.form.get("rating", 5))
+    comment = request.form.get("comment", "").strip()
+
+    # Already reviewed check
+    existing = Review.query.filter_by(
+        user_id=current_user.id, product_id=product_id
+    ).first()
+    if existing:
+        flash("You have already given a review!", "warning")
+        return redirect(url_for("views.product_detail", product_id=product_id))
+
+    review = Review(
+        user_id=current_user.id,
+        product_id=product_id,
+        rating=rating,
+        comment=comment
+    )
+    db.session.add(review)
+    db.session.commit()
+    flash("Review submit successfully, THANK YOU 🙏", "success")
+    return redirect(url_for("views.product_detail", product_id=product_id))
 
 
 @views.route("/best-deals")
@@ -342,36 +559,138 @@ def about():
         image1="/static/images/about.jpg",
         image6="/static/images/tomato.jpg",
         image7="/static/images/juice.jpg",
-        image2="/static/images/Granola Jar.jpg",
+        image2="/static/images/granola-jar.jpg",
         image3="/static/images/peas.jpg",
         image4="/static/images/corn.jpg",
-        image5="/static/images/peanut butter.jpg",
+        image5="/static/images/peanut-butter.jpg",
         image8="/static/images/j.jpg",
-        image9="static/images/Brown Rice.jpg",
+        image9="static/images/brown-rice.jpg",
         image10="/static/images/bread.jpg",
         image11="/static/images/almonds.jpg",
     )
 
 
-@views.route("/contact", methods=["GET", "POST"])
+@views.route('/contact', methods=['GET', 'POST'])
 def contact():
-    login_form  = LoginForm()
     signup_form = SignupForm()
-    if request.method == "POST":
-        name    = request.form.get("name")
-        email   = request.form.get("email")
-        phone   = request.form.get("phone")
-        message = request.form.get("message")
-        if name and email and phone and message:
-            new_message = ContactMessage(name=name, email=email, phone=phone, message=message)
-            db.session.add(new_message)
-            db.session.commit()
-            flash("Your message has been sent successfully!", "success")
-            return redirect(url_for("views.contact"))
-        else:
-            flash("Please fill out all fields.", "danger")
-    return render_template("contact.html", login_form=login_form, signup_form=signup_form)
+    login_form  = LoginForm()
+    if request.method == 'POST':
+        name    = request.form.get('name')
+        email   = request.form.get('email')
+        phone   = request.form.get('phone')
+        subject = request.form.get('subject')
+        message = request.form.get('message')
 
+        # DB માં save કરો
+        new_msg = ContactMessage(
+            name=name, email=email,
+            phone=phone, subject=subject, message=message
+        )
+        db.session.add(new_msg)
+        db.session.commit()
+
+        # ── Email 1: User ને Confirmation ──────────────────
+        try:
+            user_mail = Message(
+                subject="Thank you for contacting GreenMart! 🌿",
+                recipients=[email]
+            )
+            user_mail.html = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden;">
+                
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #2e7d32, #66bb6a); padding: 30px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 28px;">🌿 GreenMart</h1>
+                    <p style="color: #c8e6c9; margin: 5px 0 0;">Fresh & Organic</p>
+                </div>
+
+                <!-- Body -->
+                <div style="padding: 30px; background: #ffffff;">
+                    <h2 style="color: #2e7d32;">Hello {name}! 👋</h2>
+                    <p style="color: #555; font-size: 15px; line-height: 1.6;">
+                        Thank you for reaching out to us. We have received your message and our team will get back to you within <strong>24-48 hours</strong>.
+                    </p>
+
+                    <!-- Message Summary Box -->
+                    <div style="background: #f1f8e9; border-left: 4px solid #66bb6a; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <h3 style="color: #2e7d32; margin: 0 0 10px;">Your Message Summary</h3>
+                        <p style="margin: 5px 0; color: #555;"><strong>Subject:</strong> {subject}</p>
+                        <p style="margin: 5px 0; color: #555;"><strong>Message:</strong> {message}</p>
+                    </div>
+
+                    <p style="color: #555; font-size: 14px;">
+                        If you have any urgent queries, feel free to reply to this email.
+                    </p>
+                </div>
+
+                <!-- Footer -->
+                <div style="background: #f5f5f5; padding: 20px; text-align: center; border-top: 1px solid #e0e0e0;">
+                    <p style="color: #888; font-size: 13px; margin: 0;">
+                        © 2026 GreenMart | Fresh & Organic Products
+                    </p>
+                    <p style="color: #888; font-size: 12px; margin: 5px 0 0;">
+                        This is an automated email. Please do not reply directly.
+                    </p>
+                </div>
+            </div>
+            """
+            mail.send(user_mail)
+
+            # ── Email 2: Admin ને Notification ─────────────
+            admin_mail = Message(
+                subject=f"📬 New Contact: {subject}",
+                recipients=['your@gmail.com']  # Admin email
+            )
+            admin_mail.html = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden;">
+                
+                <div style="background: #2e7d32; padding: 20px; text-align: center;">
+                    <h2 style="color: white; margin: 0;">📬 New Contact Message</h2>
+                </div>
+
+                <div style="padding: 25px; background: #ffffff;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; color: #888; width: 30%;"><strong>Name</strong></td>
+                            <td style="padding: 10px; color: #333;">{name}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; color: #888;"><strong>Email</strong></td>
+                            <td style="padding: 10px; color: #333;">{email}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; color: #888;"><strong>Phone</strong></td>
+                            <td style="padding: 10px; color: #333;">{phone}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 10px; color: #888;"><strong>Subject</strong></td>
+                            <td style="padding: 10px; color: #333;">{subject}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; color: #888;"><strong>Message</strong></td>
+                            <td style="padding: 10px; color: #333;">{message}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div style="background: #f5f5f5; padding: 15px; text-align: center;">
+                    <p style="color: #888; font-size: 12px; margin: 0;">GreenMart Admin Panel Notification</p>
+                </div>
+            </div>
+            """
+            mail.send(admin_mail)
+
+            flash('Message sent successfully! We will contact you soon. ✅', 'success')
+
+        except Exception as e:
+            print(f"Email Error: {e}")
+            flash('Message saved! (Email notification pending)', 'warning')
+
+        return redirect(url_for('views.contact'))
+
+    return render_template('contact.html', 
+                           signup_form=signup_form,
+                           login_form=login_form,)
 
 # ------------------------------------------------
 # WISHLIST
@@ -416,14 +735,48 @@ def clear_wishlist():
 @views.route("/add_to_cart/<int:product_id>", methods=["POST", "GET"])
 @login_required
 def add_to_cart(product_id):
-    cart_item = Cart.query.filter_by(user_id=current_user.id, product_id=product_id).first()
+    product = Product.query.get_or_404(product_id)
+
+    variant_id = request.form.get('variant_id') or None
+    variant_id = int(variant_id) if variant_id else None
+
+    if variant_id:
+        variant = ProductVariant.query.get_or_404(variant_id)
+        price = variant.price
+    else:
+        price = product.price
+
+    cart_item = Cart.query.filter_by(
+        user_id=current_user.id,
+        product_id=product_id,
+        variant_id=variant_id
+    ).first()
+
     if cart_item:
         cart_item.quantity += 1
+        # ✅ Variant price update karo, but custom_price sirf variant mate
+        if variant_id:
+            cart_item.custom_price = price
         flash("Quantity updated in Cart!", "info")
     else:
-        cart_item = Cart(user_id=current_user.id, product_id=product_id, quantity=1)
+        cart_item = Cart(
+            user_id=current_user.id,
+            product_id=product_id,
+            variant_id=variant_id,
+            quantity=1,
+            # ✅ Variant hoy to custom_price = variant price, nahitar None
+            custom_price=price if variant_id else None,
+        )
         db.session.add(cart_item)
         flash("Item added to Cart!", "success")
+
+    wishlist_item = Wishlist.query.filter_by(
+        user_id=current_user.id,
+        product_id=product_id
+    ).first()
+    if wishlist_item:
+        db.session.delete(wishlist_item)
+
     db.session.commit()
     return redirect(request.referrer or url_for("views.shop"))
 
@@ -431,21 +784,23 @@ def add_to_cart(product_id):
 @views.route("/wishlist")
 @login_required
 def wishlist():
-    login_form  = LoginForm()
-    signup_form = SignupForm()
+    login_form     = LoginForm()
+    signup_form    = SignupForm()
     wishlist_items = Wishlist.query.filter_by(user_id=current_user.id).all()
+ 
     products = []
     for item in wishlist_items:
-        product = next((p for p in all_products if p["id"] == item.product_id), None)
+        product = Product.query.get(item.product_id)   # ✅ fetch from DB, not static list
         if product:
             products.append(product)
+ 
     return render_template(
         "wishlist.html",
-        wishlist=products,
-        login_form=login_form,
-        signup_form=signup_form,
+        wishlist    = products,
+        login_form  = login_form,
+        signup_form = signup_form,
     )
-
+ 
 
 @views.route("/cart")
 @login_required
@@ -455,13 +810,64 @@ def cart():
     cart_items  = Cart.query.filter_by(user_id=current_user.id).all()
     products    = []
     total_price = 0
+    now         = datetime.utcnow()
+
     for item in cart_items:
-        product = next((p for p in all_products if p["id"] == item.product_id), None)
-        if product:
-            product["quantity"] = item.quantity
-            product["subtotal"] = product["price"] * item.quantity
-            total_price += product["subtotal"]
-            products.append(product)
+        product = Product.query.get(item.product_id)
+        if not product:
+            continue
+
+        # ✅ Variant label
+        variant_label = None
+        if item.variant_id:
+            variant = ProductVariant.query.get(item.variant_id)
+            if variant:
+                variant_label = variant.label
+
+        effective_price = product.price
+        discount_pct    = 0
+        sale_label      = None
+
+        # ── Priority 1: custom_price (bundle deal only — no variant) ────────
+        if item.custom_price and item.custom_price < product.price and not item.variant_id:
+            effective_price = item.custom_price
+            discount_pct    = round((1 - item.custom_price / product.price) * 100, 1)
+            sale_label      = "Bundle Deal"
+
+        # ── Priority 2: Variant custom price (no discount badge) ────────────
+        elif item.custom_price and item.variant_id:
+            effective_price = item.custom_price
+
+        # ── Priority 3: ProductSale ──────────────────────────────────────────
+        else:
+            sale = ProductSale.query.filter_by(
+                product_id=product.id,
+                is_active=True
+            ).first()
+            if sale and sale.is_live:
+                effective_price = round(product.price * (1 - sale.discount_pct / 100), 2)
+                discount_pct    = sale.discount_pct
+                sale_label      = sale.label or "Sale"
+
+        subtotal = round(effective_price * item.quantity, 2)
+
+        products.append({
+            "id":             product.id,
+            "name":           product.name,
+            "variant_label":  variant_label,  # ✅ NEW
+            "price":          effective_price,
+            "original_price": product.price,
+            "discount_pct":   discount_pct,
+            "sale_label":     sale_label,
+            "image":          product.image,
+            "quantity":       item.quantity,
+            "subtotal":       subtotal,
+            "stock":          product.stock,
+        })
+        total_price += subtotal
+
+    total_price = round(total_price, 2)
+
     return render_template(
         "cart.html",
         cart=products,
@@ -469,7 +875,6 @@ def cart():
         login_form=login_form,
         signup_form=signup_form,
     )
-
 
 @views.route("/update_cart/<int:product_id>/<string:action>", methods=["POST"])
 @login_required
@@ -515,74 +920,29 @@ def remove_cart_item(product_id):
 def shop():
     signup_form = SignupForm()
     login_form  = LoginForm()
+
+    fruits_veg    = Product.query.join(Category).filter(Category.name.in_(["Fruits", "Vegetables"])).all()
+    dairy_bev     = Product.query.join(Category).filter(Category.name.in_(["Dairy", "Juices", "Beverages"])).all()
+    grains_nuts   = Product.query.join(Category).filter(Category.name.in_(["Grains", "Nuts & Seeds"])).all()
+    spices_snacks = Product.query.join(Category).filter(Category.name.in_(["Spices", "Snacks"])).all()
+    frozen        = Product.query.join(Category).filter(Category.name == "Frozen").all()
+    personal      = Product.query.join(Category).filter(Category.name == "Personal Care").all()
+    new_arrivals  = Product.query.order_by(Product.id.desc()).limit(10).all()
+
     return render_template(
         "shop.html",
-        signup_form=signup_form,
-        login_form=login_form,
-        user=current_user,
-        products=all_products,
-        image1="/static/images/apple.jpg",
-        image2="/static/images/grapes.jpg",
-        image3="/static/images/banana.jpg",
-        image4="/static/images/orange1.jpg",
-        image5="/static/images/mango.jpg",
-        image6="/static/images/pineapple.jpg",
-        image7="/static/images/strawberrie.jpg",
-        image8="/static/images/kiwi.jpg",
-        image9="/static/images/tomato.jpg",
-        image10="/static/images/brocoli.jpg",
-        image11="/static/images/carrots.jpg",
-        image12="/static/images/Spinach.jpg",
-        image13="/static/images/lettuce.jpg",
-        image14="/static/images/bell-pepper.jpg",
-        image15="/static/images/cauliflower.jpg",
-        image16="/static/images/cucumber.jpg",
-        image17="/static/images/milk.jpg",
-        image18="/static/images/buffelo.jpg",
-        image19="/static/images/cheese.jpg",
-        image20="/static/images/paneer.jpg",
-        image21="/static/images/butter.jpg",
-        image22="/static/images/ghee.jpg",
-        image23="/static/images/curd.jpg",
-        image24="/static/images/egg.jpg",
-        image25="/static/images/orange.jpg",
-        image26="/static/images/apple-juice.jpg",
-        image27="/static/images/coconut.jpg",
-        image28="/static/images/coffee.jpg",
-        image29="/static/images/tea.jpg",
-        image30="/static/images/leamon.jpg",
-        image31="/static/images/drink.jpg",
-        image32="/static/images/green.jpg",
-        image33="/static/images/almonds.jpg",
-        image34="/static/images/cashew.jpg",
-        image35="/static/images/nuts.jpg",
-        image36="/static/images/peanut.jpg",
-        image37="static/images/pistachios.jpg",
-        image38="static/images/raisins.jpg",
-        image39="static/images/chia.jpg",
-        image40="/static/images/flax.jpg",
-        image41="/static/images/oats.jpg",
-        image42="static/images/quinoa.jpg",
-        image43="/static/images/redchilli.jpg",
-        image44="/static/images/termeric.jpg",
-        image45="/static/images/cumin.jpg",
-        image46="/static/images/black-pepper.jpg",
-        image47="/static/images/potato-chips.jpg",
-        image48="/static/images/cookies.jpg",
-        image49="/static/images/french-fries.jpg",
-        image50="/static/images/momos.jpg",
-        image51="/static/images/natural.jpg",
-        image52="/static/images/ginger-cube.jpg",
-        image53="/static/images/wedges.jpg",
-        image54="/static/images/blueberry.jpg",
-        image55="/static/images/gel.jpg",
-        image56="/static/images/shampoo.jpg",
-        image57="/static/images/lotion.jpg",
-        image58="/static/images/wash.jpg",
-        image59="/static/images/coconut-oil.jpg",
+        signup_form   = signup_form,
+        login_form    = login_form,
+        user          = current_user,
+        fruits_veg    = fruits_veg,
+        dairy_bev     = dairy_bev,
+        grains_nuts   = grains_nuts,
+        spices_snacks = spices_snacks,
+        frozen        = frozen,
+        personal      = personal,
+        new_arrivals  = new_arrivals,
     )
-
-
+    
 # ================================================
 # CHECKOUT  (COD)
 # ================================================
@@ -764,50 +1124,56 @@ def get_delivery_charge():
 def checkout():
     login_form  = LoginForm()
     signup_form = SignupForm()
-
+ 
     user_addresses  = Address.query.filter_by(user_id=current_user.id).all()
     default_address = Address.query.filter_by(user_id=current_user.id, is_default=True).first()
-
+ 
     cart_items_db  = Cart.query.filter_by(user_id=current_user.id).all()
     subtotal       = 0
     checkout_items = []
-
-    for item in cart_items_db:
-        product = Product.query.get(item.product_id)
+ 
+    for item in cart_items_db:                                   # ✅ correct indent
+        product = Product.query.get(item.product_id)            # ✅ indented inside for loop
         if product:
-            total = product.price * item.quantity
-            subtotal += total
+            unit_price = item.custom_price if item.custom_price else product.price
+            total      = unit_price * item.quantity
+            subtotal  += total
             checkout_items.append({
-                "id": product.id, "name": product.name,
-                "price": product.price, "quantity": item.quantity,
-                "subtotal": total, "stock": product.stock,
+                "id":       product.id,
+                "name":     product.name,
+                "price":    unit_price,
+                "quantity": item.quantity,
+                "subtotal": total,
+                "stock":    product.stock,
             })
-
+ 
     if request.method == "POST":
         if not checkout_items:
             return jsonify({"success": False, "message": "Cart is empty"})
-
-        # ── Address ──────────────────────────────────────────
+ 
+        # ── Address ───────────────────────────────────────────────
         address_id = request.form.get("address_id")
         if address_id:
             addr = Address.query.get(address_id)
+            if not addr:
+                return jsonify({"success": False, "message": "Address not found!"})
         else:
             addr = Address(
                 user_id   = current_user.id,
-                full_name = request.form.get("full_name"),
-                phone     = request.form.get("phone"),
-                street    = request.form.get("street"),
-                city      = request.form.get("city"),
-                state     = request.form.get("state"),
-                pin       = request.form.get("pin"),
+                full_name = request.form.get("full_name", ""),
+                phone     = request.form.get("phone", ""),
+                street    = request.form.get("street", ""),
+                city      = request.form.get("city", ""),
+                state     = request.form.get("state", ""),
+                pin       = request.form.get("pin", ""),
             )
             db.session.add(addr)
             db.session.flush()
-
-        # ── Delivery Charge ──────────────────────────────────
+ 
+        # ── Delivery Charge ───────────────────────────────────────
         delivery_charge = DeliveryZone.get_charge(addr.city)
-
-        # ── Coupon ───────────────────────────────────────────
+ 
+        # ── Coupon ────────────────────────────────────────────────
         coupon_code     = request.form.get("coupon_code", "").strip().upper()
         discount_amount = 0
         if coupon_code:
@@ -817,11 +1183,22 @@ def checkout():
                 if valid:
                     discount_amount, _ = coupon.calculate_discount(subtotal)
                     coupon.used_count += 1
-
-        # ── Final Total ──────────────────────────────────────
-        final_total = subtotal + delivery_charge - discount_amount
+ 
+        # ── Reward Points Redemption ──────────────────────────────
+        REDEEM_POINTS   = 50
+        REDEEM_VALUE    = 50    # ₹50 discount for 50 points
+        redeem_points   = request.form.get("redeem_points") == "on"
+        points_discount = 0
+ 
+        # ✅ get_or_create so it never crashes on None wallet
+        wallet = RewardWallet.query.filter_by(user_id=current_user.id).first()
+        if redeem_points and wallet and wallet.points >= REDEEM_POINTS:
+            points_discount = REDEEM_VALUE
+ 
+        # ── Final Total ───────────────────────────────────────────
+        final_total = subtotal + delivery_charge - discount_amount - points_discount
         final_total = max(final_total, 0)
-
+ 
         try:
             order = Order(
                 user_id         = current_user.id,
@@ -842,43 +1219,60 @@ def checkout():
             )
             db.session.add(order)
             db.session.flush()
-
+ 
             for item in checkout_items:
                 product = Product.query.get(item["id"])
                 if product.stock < item["quantity"]:
-                    return jsonify({"success": False,
-                                    "message": f"Only {product.stock} left for {product.name}"})
+                    db.session.rollback()
+                    return jsonify({
+                        "success": False,
+                        "message": f"Only {product.stock} left for {product.name}"
+                    })
                 product.stock -= item["quantity"]
                 db.session.add(OrderItem(
-                    order_id=order.id, product_id=product.id,
-                    quantity=item["quantity"], price=product.price,
+                    order_id   = order.id,
+                    product_id = product.id,
+                    quantity   = item["quantity"],
+                    price      = item["price"],   # ✅ use unit_price, not product.price
                 ))
-
+ 
+            # ── Deduct reward points if redeemed ──────────────────
+            if points_discount > 0 and wallet:
+                wallet.points -= REDEEM_POINTS
+                db.session.add(RewardTransaction(
+                    user_id = current_user.id,
+                    points  = -REDEEM_POINTS,
+                    reason  = f"Redeemed for Order #ORD{order.id} (₹{REDEEM_VALUE} off)",
+                ))
+ 
             Cart.query.filter_by(user_id=current_user.id).delete()
             db.session.commit()
-
+ 
             try:
                 send_order_confirmed(order)
             except Exception as e:
                 print("Order Confirmed Email Error:", e)
-
+ 
             return jsonify({"success": True, "order_id": f"ORD{order.id}"})
-
+ 
         except Exception as e:
             db.session.rollback()
             print("Checkout Error:", e)
-            return jsonify({"success": False, "message": "Checkout failed"})
-
+            return jsonify({"success": False, "message": "Checkout failed. Please try again."})
+ 
+    # ── GET request ───────────────────────────────────────────────
+    wallet = RewardWallet.query.filter_by(user_id=current_user.id).first()
     return render_template(
         "checkout.html",
-        cart_items      = checkout_items,
-        subtotal        = subtotal,
-        user_addresses  = user_addresses,
-        default_address = default_address,
-        login_form      = login_form,
-        signup_form     = signup_form,
+        cart_items       = checkout_items,
+        subtotal         = subtotal,
+        user_addresses   = user_addresses,
+        default_address  = default_address,
+        login_form       = login_form,
+        signup_form      = signup_form,
+        wallet           = wallet,
+        available_points = wallet.points if wallet else 0,
     )
-
 # ------------------------------------------------
 # INVOICE
 # ------------------------------------------------
@@ -1374,3 +1768,305 @@ def spices_snacks():
         image47="/static/images/potato-chips.jpg",
         image48="/static/images/cookies.jpg",
     )
+    
+# ═══════════════════════════════════════════════════════════════════════
+#  TESTIMONIAL ROUTES  — paste into views.py
+#  Also add these imports at top of views.py:
+#    from .models import Testimonial, RewardWallet, RewardTransaction, TestimonialRewardConfig
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Customer: Submit / Edit testimonial ─────────────────────────────
+@views.route("/testimonial/submit", methods=["GET", "POST"])
+@login_required
+def submit_testimonial():
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+
+    # Already has one?
+    existing = Testimonial.query.filter_by(user_id=current_user.id).first()
+
+    # Collect only DELIVERED orders of this user for the "verified purchase" dropdown
+    delivered_orders = Order.query.filter_by(
+        user_id=current_user.id, status="Delivered"
+    ).order_by(Order.created_at.desc()).all()
+
+    if request.method == "POST":
+        rating   = int(request.form.get("rating", 5))
+        headline = request.form.get("headline", "").strip()
+        body     = request.form.get("body", "").strip()
+        order_id = request.form.get("order_id") or None
+        product_id = request.form.get("product_id") or None
+
+        if not headline or not body:
+            flash("Please fill in the title and your review.", "danger")
+            return redirect(url_for("views.submit_testimonial"))
+
+        if len(body) < 30:
+            flash("Your review is too short (min 30 characters).", "warning")
+            return redirect(url_for("views.submit_testimonial"))
+
+        if existing:
+            # Allow resubmit only if previously rejected
+            if existing.status == "approved":
+                flash("Your testimonial is already approved and published! 🎉", "info")
+                return redirect(url_for("views.profile"))
+            # Update
+            existing.rating     = rating
+            existing.headline   = headline
+            existing.body       = body
+            existing.order_id   = int(order_id) if order_id else None
+            existing.product_id = int(product_id) if product_id else None
+            existing.status     = Testimonial.STATUS_PENDING
+            existing.reward_given = False
+            existing.admin_note = None
+            existing.moderated_at = None
+            db.session.commit()
+            flash("✅ Testimonial updated & re-submitted for review!", "success")
+        else:
+            t = Testimonial(
+                user_id    = current_user.id,
+                rating     = rating,
+                headline   = headline,
+                body       = body,
+                order_id   = int(order_id) if order_id else None,
+                product_id = int(product_id) if product_id else None,
+                status     = Testimonial.STATUS_PENDING,
+            )
+            db.session.add(t)
+            db.session.commit()
+            flash("✅ Testimonial submitted! You'll earn reward points once approved.", "success")
+
+        return redirect(url_for("views.profile"))
+
+    products = Product.query.order_by(Product.name).all()
+    wallet   = RewardWallet.query.filter_by(user_id=current_user.id).first()
+
+    return render_template(
+        "submit_testimonial.html",
+        login_form=login_form,
+        signup_form=signup_form,
+        existing=existing,
+        delivered_orders=delivered_orders,
+        products=products,
+        reward_points=TestimonialRewardConfig.get_points(),
+        wallet=wallet,
+    )
+
+
+# ── Public: Testimonials page (all approved) ────────────────────────
+@views.route("/testimonials")
+def testimonials_page():
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+    testimonials = (
+        Testimonial.query
+        .filter_by(status="approved")
+        .order_by(Testimonial.is_featured.desc(), Testimonial.moderated_at.desc())
+        .all()
+    )
+    return render_template(
+        "testimonials.html",
+        login_form=login_form,
+        signup_form=signup_form,
+        testimonials=testimonials,
+    )
+
+
+# ── Customer: Reward wallet page ────────────────────────────────────
+@views.route("/my-rewards")
+@login_required
+def my_rewards():
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+    wallet = RewardWallet.query.filter_by(user_id=current_user.id).first()
+    txns   = (RewardTransaction.query
+              .filter_by(user_id=current_user.id)
+              .order_by(RewardTransaction.created_at.desc())
+              .limit(30).all())
+    return render_template(
+        "my_rewards.html",
+        login_form=login_form,
+        signup_form=signup_form,
+        wallet=wallet,
+        txns=txns,
+    )
+
+
+@views.route("/api/flash-sale")
+def api_flash_sale():
+    from datetime import datetime
+    sale = FlashSale.query.filter_by(is_active=True).first()
+ 
+    if not sale or not sale.is_live:
+        return jsonify({"active": False})
+ 
+    items = []
+    for item in sale.items:
+        p = item.product
+        items.append({
+            "product_id":     p.id,
+            "name":           p.name,
+            "image":          p.image,
+            "original_price": float(p.price),
+            "sale_price":     float(item.sale_price),
+            "discount_pct":   float(item.discount_pct),
+            "stock":          p.stock,
+        })
+ 
+    # ends_at UTC ISO — JS side 'Z' append karke correct parse karse
+    ends_at_iso = sale.ends_at.strftime("%Y-%m-%dT%H:%M:%S")
+ 
+    return jsonify({
+        "active":            True,
+        "sale_name":         sale.name,
+        "seconds_remaining": sale.seconds_remaining,
+        "ends_at":           ends_at_iso,   # UTC, no tz suffix — JS adds 'Z'
+        "items":             items,
+    })
+ 
+
+
+# ── Check if a single product is on flash sale ───────────────
+# Product detail page par badge dikhavva
+@views.route("/api/flash-sale/product/<int:product_id>")
+def api_flash_sale_product(product_id):
+    from datetime import datetime
+    sale = FlashSale.query.filter_by(is_active=True).first()
+
+    if not sale or not sale.is_live:
+        return jsonify({"on_sale": False})
+
+    item = FlashSaleItem.query.filter_by(
+        flash_sale_id=sale.id, product_id=product_id
+    ).first()
+
+    if not item:
+        return jsonify({"on_sale": False})
+
+    return jsonify({
+        "on_sale":          True,
+        "sale_name":        sale.name,
+        "discount_pct":     item.discount_pct,
+        "sale_price":       item.sale_price,
+        "original_price":   item.product.price,
+        "seconds_remaining": sale.seconds_remaining,
+    })
+
+# ── Public: Bundles listing page ────────────────────────────────────
+@views.route("/bundles")
+def bundles_page():
+    login_form  = LoginForm()
+    signup_form = SignupForm()
+ 
+    bundles = (
+        BundleGroup.query
+        .filter_by(is_active=True)
+        .order_by(BundleGroup.created_at.desc())
+        .all()
+    )
+    # Only live bundles
+    live_bundles = [b for b in bundles if b.is_live]
+ 
+    return render_template(
+        "bundles.html",
+        bundles=live_bundles,
+        login_form=login_form,
+        signup_form=signup_form,
+    )
+ 
+ 
+# ── API: Add entire bundle to cart ──────────────────────────────────
+@views.route("/api/bundle/<int:bundle_id>/add-to-cart", methods=["POST"])
+@login_required
+@csrf.exempt
+def add_bundle_to_cart(bundle_id):
+    bundle = BundleGroup.query.get_or_404(bundle_id)
+
+    if not bundle.is_live:
+        return jsonify({"success": False, "message": "Aa bundle currently available nathi!"})
+
+    mrp_total       = bundle.mrp_total
+    effective_price = bundle.effective_price
+
+    # ✅ Safety check
+    if not mrp_total or mrp_total == 0:
+        return jsonify({"success": False, "message": "Bundle items not found!"})
+
+    discount_ratio = effective_price / mrp_total  # e.g. 0.80 for 20% off
+
+    added   = []
+    skipped = []
+
+    for item in bundle.items:
+        product = item.product
+        if not product or product.stock < item.quantity:
+            skipped.append(product.name if product else "Unknown")
+            continue
+
+        # ✅ Per-product discounted price
+        bundle_unit_price = round(product.price * discount_ratio, 2)
+
+        cart_item = Cart.query.filter_by(
+            user_id=current_user.id,
+            product_id=product.id
+        ).first()
+
+        if cart_item:
+            # ✅ Existing item — quantity + custom_price dono update karo
+            cart_item.quantity    += item.quantity
+            cart_item.custom_price = bundle_unit_price
+        else:
+            cart_item = Cart(
+                user_id      = current_user.id,
+                product_id   = product.id,
+                quantity     = item.quantity,
+                custom_price = bundle_unit_price,  # ✅ discounted price
+            )
+            db.session.add(cart_item)
+
+        added.append(product.name)
+
+    db.session.commit()
+
+    msg = f"✅ {len(added)} products cart ma add thaya! Bundle discount apply thayo."
+    if skipped:
+        msg += f" ⚠️ {len(skipped)} out of stock: {', '.join(skipped)}"
+
+    return jsonify({
+        "success":     True,
+        "message":     msg,
+        "added_count": len(added),
+        "skipped":     skipped,
+    })
+ 
+ 
+# ── API: Bundle list for home/shop section (JSON) ───────────────────
+@views.route("/api/bundles")
+def api_bundles():
+    bundles = BundleGroup.query.filter_by(is_active=True).all()
+    live = [b for b in bundles if b.is_live]
+ 
+    result = []
+    for b in live:
+        result.append({
+            "id":           b.id,
+            "name":         b.name,
+            "description":  b.description,
+            "deal_type":    b.deal_type,
+            "badge_label":  b.badge_label,
+            "mrp_total":    b.mrp_total,
+            "effective_price": b.effective_price,
+            "savings":      b.savings,
+            "savings_pct":  b.savings_pct,
+            "image":        b.image,
+            "items": [{
+                "product_id":   i.product_id,
+                "name":         i.product.name,
+                "image":        i.product.image,
+                "price":        i.product.price,
+                "quantity":     i.quantity,
+            } for i in b.items if i.product],
+        })
+ 
+    return jsonify(result)
+

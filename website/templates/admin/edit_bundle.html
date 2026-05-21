@@ -1,0 +1,254 @@
+<!-- ════════════════════════════════════════════════════════════
+     FILE 1: templates/admin/edit_bundle.html
+     ════════════════════════════════════════════════════════════ -->
+{% extends "admin/base.html" %}
+{% block title %}Edit Bundle | GreenMart Admin{% endblock %}
+
+{% block content %}
+<style>
+:root {
+  --green:#1a7a4a; --green-dark:#0f5233; --green-light:#f0faf5; --green-mid:#d1f0e0;
+  --red:#dc2626; --red-light:#fef2f2;
+  --gray-50:#f9fafb; --gray-100:#f3f4f6; --gray-200:#e5e7eb; --gray-400:#9ca3af;
+  --gray-600:#4b5563; --gray-800:#1f2937;
+  --radius:12px; --radius-sm:8px;
+  --shadow:0 1px 3px rgba(0,0,0,0.08); --shadow-md:0 4px 16px rgba(0,0,0,0.08);
+}
+.eb-page { padding:28px 32px; max-width:1100px; }
+.back-btn { display:inline-flex; align-items:center; gap:6px; color:var(--gray-600); font-size:13px; font-weight:600; text-decoration:none; margin-bottom:20px; }
+.back-btn:hover { color:var(--green); }
+
+.two-col { display:grid; grid-template-columns:1fr 380px; gap:24px; }
+@media(max-width:900px){ .two-col{ grid-template-columns:1fr; } }
+
+.card { background:white; border:1px solid var(--gray-200); border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:20px; overflow:hidden; }
+.card-header { padding:16px 22px; border-bottom:1px solid var(--gray-100); }
+.card-header h5 { font-size:14px; font-weight:700; color:var(--gray-800); margin:0; }
+.card-body { padding:22px; }
+
+.field { margin-bottom:14px; }
+.field label { display:block; font-size:12px; font-weight:600; color:var(--gray-600); margin-bottom:6px; }
+.field input, .field select, .field textarea {
+  width:100%; padding:9px 12px; font-size:13px;
+  border:1px solid var(--gray-200); border-radius:var(--radius-sm);
+  background:var(--gray-50); color:var(--gray-800); outline:none; transition:border-color 0.15s;
+}
+.field input:focus, .field select:focus { border-color:var(--green); background:white; }
+.field textarea { resize:vertical; min-height:60px; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+.btn-save { width:100%; padding:11px; background:var(--green); color:white; border:none; border-radius:var(--radius-sm); font-size:13px; font-weight:700; cursor:pointer; transition:background 0.15s; }
+.btn-save:hover { background:var(--green-dark); }
+
+/* Products panel */
+.add-product-row { display:grid; grid-template-columns:1fr 80px auto; gap:8px; align-items:end; margin-bottom:16px; }
+.btn-add { padding:9px 14px; background:var(--green); color:white; border:none; border-radius:var(--radius-sm); font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.btn-add:hover { background:var(--green-dark); }
+
+/* Item list */
+.item-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--gray-100); }
+.item-row:last-child { border-bottom:none; }
+.item-row img { width:40px; height:40px; border-radius:8px; object-fit:cover; flex-shrink:0; border:1.5px solid var(--gray-200); }
+.item-info { flex:1; }
+.item-info .iname { font-size:13px; font-weight:600; color:var(--gray-800); }
+.item-info .iprice { font-size:12px; color:var(--gray-400); }
+.item-qty-badge { background:var(--green-light); color:var(--green); font-size:12px; font-weight:700; padding:3px 10px; border-radius:99px; }
+.btn-rm { background:var(--red-light); color:var(--red); border:1px solid #fecaca; border-radius:var(--radius-sm); padding:5px 10px; font-size:12px; cursor:pointer; font-weight:600; }
+.btn-rm:hover { background:var(--red); color:white; }
+
+/* Summary box */
+.summary-box { background:var(--green-light); border:1.5px solid var(--green-mid); border-radius:var(--radius-sm); padding:16px; }
+.summary-row { display:flex; justify-content:space-between; font-size:13px; color:var(--gray-600); margin-bottom:8px; }
+.summary-row:last-child { margin-bottom:0; font-weight:700; color:var(--green); font-size:15px; }
+.summary-divider { border:none; border-top:1px solid var(--green-mid); margin:10px 0; }
+</style>
+
+<div class="eb-page">
+  <a href="{{ url_for('admin.manage_bundles') }}" class="back-btn">← Back to Bundles</a>
+
+  <div class="two-col">
+
+    <!-- LEFT: Settings + Products -->
+    <div>
+
+      <!-- Update settings -->
+      <div class="card">
+        <div class="card-header"><h5>⚙️ Bundle Settings — {{ bundle.name }}</h5></div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('admin.update_bundle', bundle_id=bundle.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-row">
+              <div class="field">
+                <label>Bundle Name</label>
+                <input type="text" name="name" value="{{ bundle.name }}" required>
+              </div>
+              <div class="field">
+                <label>Badge Label</label>
+                <input type="text" name="badge_label" value="{{ bundle.badge_label or '' }}" placeholder="🔥 Best Value...">
+              </div>
+            </div>
+            <div class="field">
+              <label>Description</label>
+              <textarea name="description">{{ bundle.description or '' }}</textarea>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label>Deal Type</label>
+                <select name="deal_type" id="editDealType" onchange="updateEditFields()">
+                  {% for val, label in [('percent','🔥 Discount %'),('fixed','💎 Fixed Price'),('bxgy','🎁 Buy X Get Y'),('free_qty','📦 Custom Qty')] %}
+                  <option value="{{ val }}" {% if bundle.deal_type == val %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field" id="ef-percent" {% if bundle.deal_type != 'percent' %}style="display:none"{% endif %}>
+                <label>Discount %</label>
+                <input type="number" name="discount_pct" value="{{ bundle.discount_pct or '' }}" min="1" max="90" step="0.5">
+              </div>
+              <div class="field" id="ef-fixed" {% if bundle.deal_type != 'fixed' %}style="display:none"{% endif %}>
+                <label>Fixed Price (₹)</label>
+                <input type="number" name="fixed_price" value="{{ bundle.fixed_price or '' }}" min="1" step="0.5">
+              </div>
+            </div>
+            <div class="form-row" id="ef-bxgy" {% if bundle.deal_type != 'bxgy' %}style="display:none"{% endif %}>
+              <div class="field">
+                <label>Buy Qty</label>
+                <input type="number" name="buy_qty" value="{{ bundle.buy_qty or '' }}" min="1">
+              </div>
+              <div class="field">
+                <label>Free Qty</label>
+                <input type="number" name="free_qty" value="{{ bundle.free_qty or '' }}" min="1">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field">
+                <label>Starts At (IST)</label>
+                <input type="datetime-local" name="starts_at"
+                  value="{{ (bundle.starts_at).strftime('%Y-%m-%dT%H:%M') if bundle.starts_at else '' }}">
+              </div>
+              <div class="field">
+                <label>Ends At (IST)</label>
+                <input type="datetime-local" name="ends_at"
+                  value="{{ (bundle.ends_at).strftime('%Y-%m-%dT%H:%M') if bundle.ends_at else '' }}">
+              </div>
+            </div>
+            <button type="submit" class="btn-save">💾 Save Settings</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Add product -->
+      <div class="card">
+        <div class="card-header"><h5>➕ Product Add Karo</h5></div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('admin.add_bundle_item', bundle_id=bundle.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="add-product-row">
+              <div class="field" style="margin:0;">
+                <label>Product</label>
+                <select name="product_id">
+                  {% for p in products %}
+                    <option value="{{ p.id }}" {% if p.id in existing_ids %}disabled{% endif %}>
+                      {{ p.name }} — ₹{{ p.price }}{% if p.id in existing_ids %} (already added){% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field" style="margin:0;">
+                <label>Qty</label>
+                <input type="number" name="quantity" value="1" min="1" max="99">
+              </div>
+              <div style="padding-bottom:0;">
+                <label style="display:block; font-size:12px; margin-bottom:6px;">&nbsp;</label>
+                <button type="submit" class="btn-add">+ Add</button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Current items -->
+          {% if bundle.items %}
+            {% for item in bundle.items %}
+            <div class="item-row">
+              <img src="{{ item.product.image }}" alt="{{ item.product.name }}">
+              <div class="item-info">
+                <div class="iname">{{ item.product.name }}</div>
+                <div class="iprice">₹{{ item.product.price }} each</div>
+              </div>
+              <span class="item-qty-badge">×{{ item.quantity }}</span>
+              <form method="POST" action="{{ url_for('admin.remove_bundle_item', bundle_id=bundle.id, item_id=item.id) }}" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn-rm">✕</button>
+              </form>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p style="color:var(--gray-400); font-size:13px; text-align:center; padding:20px 0;">
+              Haju koi product add nathi thayo.
+            </p>
+          {% endif %}
+        </div>
+      </div>
+
+    </div><!-- /LEFT -->
+
+    <!-- RIGHT: Summary -->
+    <div>
+      <div class="card">
+        <div class="card-header"><h5>💰 Pricing Summary</h5></div>
+        <div class="card-body">
+          <div class="summary-box">
+            <div class="summary-row"><span>Products</span><span>{{ bundle.items|length }}</span></div>
+            <div class="summary-row"><span>MRP Total</span><span>₹{{ bundle.mrp_total|int }}</span></div>
+            <div class="summary-row"><span>Deal Type</span><span>{{ bundle.deal_type|upper }}</span></div>
+            <hr class="summary-divider">
+            <div class="summary-row"><span>Effective Price</span><span>₹{{ bundle.effective_price|int }}</span></div>
+            <div class="summary-row"><span>Customer Saves</span><span>₹{{ bundle.savings|int }} ({{ bundle.savings_pct }}%)</span></div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <div style="font-size:12px; font-weight:700; color:var(--gray-600); margin-bottom:8px;">Status</div>
+            {% if bundle.is_live %}
+              <span style="display:block; background:var(--green-light); color:var(--green); font-size:13px; font-weight:700; padding:10px 14px; border-radius:var(--radius-sm); text-align:center;">✅ Live</span>
+            {% elif bundle.is_active %}
+              <span style="display:block; background:#fef3c7; color:#d97706; font-size:13px; font-weight:700; padding:10px 14px; border-radius:var(--radius-sm); text-align:center;">⏰ Scheduled</span>
+            {% else %}
+              <span style="display:block; background:var(--gray-100); color:var(--gray-400); font-size:13px; font-weight:700; padding:10px 14px; border-radius:var(--radius-sm); text-align:center;">◯ Inactive</span>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('admin.toggle_bundle', bundle_id=bundle.id) }}" style="margin-top:10px;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" style="width:100%; padding:10px; border:1.5px solid var(--gray-200); background:white; border-radius:var(--radius-sm); font-size:13px; font-weight:600; cursor:pointer; color:var(--gray-600);">
+                {% if bundle.is_active %}⏸ Pause Bundle{% else %}▶ Activate Bundle{% endif %}
+              </button>
+            </form>
+          </div>
+
+          <div style="margin-top:12px;">
+            <a href="{{ url_for('views.bundles_page') }}" target="_blank"
+               style="display:block; text-align:center; padding:10px; background:var(--green-light); color:var(--green); border-radius:var(--radius-sm); font-size:13px; font-weight:700; text-decoration:none;">
+              👁 Customer View
+            </a>
+          </div>
+        </div>
+      </div>
+    </div><!-- /RIGHT -->
+
+  </div>
+</div>
+
+<script>
+function updateEditFields() {
+  const type = document.getElementById('editDealType').value;
+  document.getElementById('ef-percent').style.display = type === 'percent' ? '' : 'none';
+  document.getElementById('ef-fixed').style.display   = type === 'fixed'   ? '' : 'none';
+  document.getElementById('ef-bxgy').style.display    = type === 'bxgy'    ? '' : 'none';
+}
+</script>
+{% endblock %}
+
+
+
+{#
+  ── HOME PAGE ma paste karo (below testimonials section):
+
+  
+#}

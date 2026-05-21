@@ -1,0 +1,480 @@
+{% extends "admin/base.html" %}
+{% block title %}Flash Sales | GreenMart Admin{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --green:       #1a7a4a;
+    --green-dark:  #0f5233;
+    --green-light: #f0faf5;
+    --green-mid:   #d1f0e0;
+    --red:         #dc2626;
+    --red-light:   #fef2f2;
+    --amber:       #d97706;
+    --amber-light: #fffbeb;
+    --gray-50:     #f9fafb;
+    --gray-100:    #f3f4f6;
+    --gray-200:    #e5e7eb;
+    --gray-400:    #9ca3af;
+    --gray-600:    #4b5563;
+    --gray-800:    #1f2937;
+    --radius:      12px;
+    --radius-sm:   8px;
+    --shadow:      0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md:   0 4px 16px rgba(0,0,0,0.08);
+  }
+
+  .fs-page { padding: 28px 32px; max-width: 1200px; }
+
+  /* ── Page header ── */
+  .fs-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px; flex-wrap: wrap; gap: 16px;
+  }
+  .fs-header-left h2 {
+    font-size: 22px; font-weight: 700; color: var(--gray-800);
+    margin: 0 0 4px; display: flex; align-items: center; gap: 10px;
+  }
+  .fs-header-left p { font-size: 13px; color: var(--gray-400); margin: 0; }
+  .live-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #fef2f2; color: var(--red);
+    font-size: 11px; font-weight: 700; padding: 3px 10px;
+    border-radius: 99px; letter-spacing: 0.04em;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--red); animation: blink 1.2s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  /* ── Create Sale Card ── */
+  .create-card {
+    background: white; border: 1px solid var(--gray-200);
+    border-radius: var(--radius); padding: 22px 24px;
+    margin-bottom: 24px; box-shadow: var(--shadow);
+  }
+  .create-card h5 {
+    font-size: 14px; font-weight: 700; color: var(--gray-800);
+    margin: 0 0 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .create-card h5 span {
+    background: var(--green); color: white;
+    width: 24px; height: 24px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 180px 140px; gap: 12px; align-items: end; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; padding: 9px 12px; font-size: 13px;
+    border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+    background: var(--gray-50); color: var(--gray-800);
+    outline: none; transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--green); background: white; }
+  .btn-create {
+    width: 100%; padding: 9px 16px; background: var(--green);
+    color: white; border: none; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: background 0.15s; white-space: nowrap;
+  }
+  .btn-create:hover { background: var(--green-dark); }
+
+  /* ── Sales Table ── */
+  .sales-card {
+    background: white; border: 1px solid var(--gray-200);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .sales-card-header {
+    padding: 16px 22px; border-bottom: 1px solid var(--gray-100);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .sales-card-header h5 { font-size: 14px; font-weight: 700; color: var(--gray-800); margin: 0; }
+  .count-badge {
+    background: var(--gray-100); color: var(--gray-600);
+    font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 99px;
+  }
+
+  table.fs-table { width: 100%; border-collapse: collapse; }
+  .fs-table th {
+    background: var(--gray-50); font-size: 11px; font-weight: 700;
+    color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--gray-100);
+  }
+  .fs-table td { padding: 14px 16px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+  .fs-table tr:last-child td { border-bottom: none; }
+  .fs-table tr:hover td { background: var(--gray-50); }
+
+  .sale-name-cell { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+  .sale-meta { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+
+  /* Status badges */
+  .status-live {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #fef2f2; color: var(--red);
+    font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px;
+  }
+  .status-scheduled {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--amber-light); color: var(--amber);
+    font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px;
+  }
+  .status-ended {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--gray-100); color: var(--gray-400);
+    font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px;
+  }
+  .status-inactive {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--gray-100); color: var(--gray-400);
+    font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 99px;
+  }
+
+  /* Timer */
+  .timer-cell {
+    font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: var(--red); letter-spacing: 0.5px;
+  }
+  .timer-cell.ended { color: var(--gray-400); }
+
+  /* Products count */
+  .prod-count {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 13px; color: var(--gray-600);
+  }
+  .prod-count strong { color: var(--gray-800); }
+
+  /* Action buttons */
+  .btn-actions { display: flex; gap: 6px; align-items: center; }
+  .btn-sm {
+    padding: 6px 12px; font-size: 12px; font-weight: 600;
+    border-radius: var(--radius-sm); border: 1px solid transparent;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .btn-edit   { background: var(--green-light); color: var(--green); border-color: var(--green-mid); }
+  .btn-edit:hover { background: var(--green); color: white; }
+  .btn-start  { background: var(--green); color: white; }
+  .btn-start:hover { background: var(--green-dark); }
+  .btn-stop   { background: var(--red-light); color: var(--red); border-color: #fecaca; }
+  .btn-stop:hover { background: var(--red); color: white; }
+  .btn-delete { background: var(--gray-100); color: var(--gray-600); border-color: var(--gray-200); }
+  .btn-delete:hover { background: var(--red-light); color: var(--red); border-color: #fecaca; }
+
+  /* Empty state */
+  .empty-state { padding: 56px; text-align: center; }
+  .empty-state .empty-icon { font-size: 40px; margin-bottom: 14px; opacity: 0.5; }
+  .empty-state p { color: var(--gray-400); font-size: 14px; margin: 0; }
+
+  /* Duration badge */
+  .dur-badge {
+    background: var(--gray-100); color: var(--gray-600);
+    font-size: 12px; padding: 3px 9px; border-radius: 99px;
+  }
+
+  /* Confirm modal */
+  .confirm-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4); z-index: 9999;
+    align-items: center; justify-content: center;
+  }
+  .confirm-overlay.show { display: flex; }
+  .confirm-box {
+    background: white; border-radius: var(--radius);
+    padding: 28px; max-width: 380px; width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .confirm-box h4 { font-size: 16px; font-weight: 700; color: var(--gray-800); margin: 0 0 8px; }
+  .confirm-box p  { font-size: 13px; color: var(--gray-600); margin: 0 0 20px; }
+  .confirm-btns   { display: flex; gap: 10px; }
+  .confirm-btns button { flex: 1; padding: 10px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+  .confirm-cancel { background: var(--gray-100); color: var(--gray-600); }
+  .confirm-ok     { background: var(--red); color: white; }
+  .confirm-ok-green { background: var(--green); color: white; }
+</style>
+
+<div class="fs-page">
+
+  <!-- ── Page Header ── -->
+  <div class="fs-header">
+    <div class="fs-header-left">
+      <h2>
+        ⚡ Flash Sale Manager
+        {% for sale in sales %}
+          {% if sale.is_live %}
+            <span class="live-pill"><span class="live-dot"></span> LIVE</span>
+          {% endif %}
+        {% endfor %}
+      </h2>
+      <p>Sale banavo, products ane discounts manage karo, timer set karo</p>
+    </div>
+  </div>
+
+  <!-- ── Create New Sale ── -->
+  <div class="create-card">
+    <h5><span>+</span> Navi Flash Sale Banavo</h5>
+    <form method="POST" action="{{ url_for('admin.create_flash_sale') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-row">
+        <div class="field">
+          <label>Sale Name *</label>
+          <input type="text" name="name" placeholder="Diwali Flash Sale, Summer Offer..." required>
+        </div>
+        <div class="field">
+          <label>Duration</label>
+          <select name="duration_hours">
+            <option value="0.25">15 Minutes</option>
+            <option value="0.5">30 Minutes</option>
+            <option value="1" selected>1 Kalak</option>
+            <option value="2">2 Kalak</option>
+            <option value="3">3 Kalak</option>
+            <option value="6">6 Kalak</option>
+            <option value="12">12 Kalak</option>
+            <option value="24">1 Din (24 Kalak)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn-create">⚡ Banavo</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Sales List ── -->
+  <div class="sales-card">
+    <div class="sales-card-header">
+      <h5>Badhi Flash Sales</h5>
+      <span class="count-badge">{{ sales|length }} total</span>
+    </div>
+
+    {% if sales %}
+    <table class="fs-table">
+      <thead>
+        <tr>
+          <th>Sale Name</th>
+          <th>Status</th>
+          <th>Timer</th>
+          <th>Products</th>
+          <th>Duration</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sale in sales %}
+        {% set duration_sec = (sale.ends_at - sale.starts_at).total_seconds() %}
+        {% set duration_h   = (duration_sec / 3600)|int %}
+        {% set duration_m   = ((duration_sec % 3600) / 60)|int %}
+
+        <tr>
+          <!-- Name -->
+          <td>
+            <div class="sale-name-cell">{{ sale.name }}</div>
+            <div class="sale-meta">
+              Created: {{ sale.created_at.strftime('%d %b %Y, %H:%M') }}
+            </div>
+          </td>
+
+          <!-- Status -->
+          <td>
+            {% if sale.is_live %}
+              <span class="status-live"><span class="live-dot"></span> Live</span>
+            {% elif sale.is_active and now > sale.ends_at %}
+              <span class="status-ended">⬛ Khatam</span>
+            {% elif sale.is_active %}
+              <span class="status-scheduled">🕐 Scheduled</span>
+            {% else %}
+              <span class="status-inactive">◯ Inactive</span>
+            {% endif %}
+          </td>
+
+          <!-- Timer -->
+          <td>
+            {% if sale.is_live %}
+              <div class="timer-cell" data-end="{{ sale.ends_at.strftime('%Y-%m-%dT%H:%M:%S') }}">
+                --:--:--
+              </div>
+            {% elif now > sale.ends_at %}
+              <div class="timer-cell ended">Khatam</div>
+            {% else %}
+              <div class="timer-cell ended" style="font-size:12px;">
+                {{ sale.starts_at.strftime('%d %b, %H:%M') }}
+              </div>
+            {% endif %}
+          </td>
+
+          <!-- Products -->
+          <td>
+            <div class="prod-count">
+              📦 <strong>{{ sale.items|length }}</strong> products
+            </div>
+            {% if sale.items %}
+            <div style="font-size:11px; color:var(--gray-400); margin-top:3px;">
+              Avg: {{ "%.0f"|format(sale.items|map(attribute='discount_pct')|list|sum / sale.items|length) }}% off
+            </div>
+            {% endif %}
+          </td>
+
+          <!-- Duration -->
+          <td>
+            <span class="dur-badge">
+              {% if duration_h >= 24 %}
+                {{ (duration_h / 24)|int }} Din
+              {% elif duration_h > 0 and duration_m > 0 %}
+                {{ duration_h }}h {{ duration_m }}m
+              {% elif duration_h > 0 %}
+                {{ duration_h }} Kalak
+              {% else %}
+                {{ duration_m }} min
+              {% endif %}
+            </span>
+          </td>
+
+          <!-- Actions -->
+          <td>
+            <div class="btn-actions">
+              <!-- Edit -->
+              <a href="{{ url_for('admin.edit_flash_sale', sale_id=sale.id) }}"
+                 class="btn-sm btn-edit">✏️ Edit</a>
+
+              <!-- Start / Stop -->
+              {% if sale.is_live %}
+                <button class="btn-sm btn-stop"
+                        onclick="confirmAction('stop', {{ sale.id }}, '{{ sale.name }}')">
+                  ⏹ Stop
+                </button>
+              {% else %}
+                <button class="btn-sm btn-start"
+                        onclick="confirmAction('start', {{ sale.id }}, '{{ sale.name }}')">
+                  ▶ Start
+                </button>
+              {% endif %}
+
+              <!-- Delete -->
+              <button class="btn-sm btn-delete"
+                      onclick="confirmAction('delete', {{ sale.id }}, '{{ sale.name }}')">
+                🗑
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">⚡</div>
+      <p>Haju koi Flash Sale nathi.<br>Upar form bharaine pehli sale banavo!</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div><!-- /fs-page -->
+
+
+<!-- ── Confirm Modal ── -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h4 id="confirmTitle">Confirm</h4>
+    <p id="confirmMsg">Are you sure?</p>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="closeConfirm()">Cancel</button>
+      <button id="confirmOkBtn" class="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden forms for POST actions -->
+<form id="formToggle" method="POST" style="display:none;">
+  <input type="hidden" name="csrf_token" id="csrfToken"
+         value="{{ csrf_token }}">
+</form>
+<form id="formDelete" method="POST" style="display:none;">
+  <input type="hidden" name="csrf_token"
+         value="{{ csrf_token }}">
+</form>
+
+
+<script>
+// ── Admin timer countdowns ──────────────────────────────────
+document.querySelectorAll('.timer-cell[data-end]').forEach(el => {
+  function tick() {
+    const endMs = new Date(el.dataset.end + 'Z').getTime();
+    const rem   = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+    if (rem <= 0) { el.textContent = 'Khatam'; el.classList.add('ended'); return; }
+    const h = Math.floor(rem / 3600);
+    const m = Math.floor((rem % 3600) / 60);
+    const s = rem % 60;
+    el.textContent = [h,m,s].map(x => String(x).padStart(2,'0')).join(':');
+    setTimeout(tick, 1000);
+  }
+  tick();
+});
+
+// ── Confirm modal ──────────────────────────────────────────
+let pendingAction = null;
+
+function confirmAction(type, saleId, saleName) {
+  const overlay = document.getElementById('confirmOverlay');
+  const title   = document.getElementById('confirmTitle');
+  const msg     = document.getElementById('confirmMsg');
+  const okBtn   = document.getElementById('confirmOkBtn');
+
+  pendingAction = { type, saleId };
+
+  if (type === 'start') {
+    title.textContent = '▶ Sale Shuru Karo?';
+    msg.textContent   = `"${saleName}" shuru karvaathi timer reset thase ane customer ne badges dikhase.`;
+    okBtn.className   = 'confirm-ok-green';
+    okBtn.textContent = 'Haa, Start Karo';
+  } else if (type === 'stop') {
+    title.textContent = '⏹ Sale Band Karo?';
+    msg.textContent   = `"${saleName}" band karvaathi badha badges turant hatai jase.`;
+    okBtn.className   = 'confirm-ok';
+    okBtn.textContent = 'Haa, Band Karo';
+  } else if (type === 'delete') {
+    title.textContent = '🗑 Delete Karo?';
+    msg.textContent   = `"${saleName}" permanently delete thai jase. Aa action undo nahi thay.`;
+    okBtn.className   = 'confirm-ok';
+    okBtn.textContent = 'Haa, Delete Karo';
+  }
+
+  overlay.classList.add('show');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('show');
+  pendingAction = null;
+}
+
+document.getElementById('confirmOkBtn').addEventListener('click', () => {
+  if (!pendingAction) return;
+  const { type, saleId } = pendingAction;
+
+  // ✅ Get the CSRF token from the meta tag
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+  if (type === 'start' || type === 'stop') {
+    const form = document.getElementById('formToggle');
+    form.action = `/admin/flash-sales/${saleId}/toggle`;
+    form.querySelector('[name="csrf_token"]').value = csrfToken;
+    form.submit();
+  } else if (type === 'delete') {
+    const form = document.getElementById('formDelete');
+    form.action = `/admin/flash-sales/${saleId}/delete`;
+    form.querySelector('[name="csrf_token"]').value = csrfToken;
+    form.submit();
+  }
+  closeConfirm();
+});
+
+// Close on overlay click
+document.getElementById('confirmOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeConfirm();
+});
+</script>
+
+{% endblock %}

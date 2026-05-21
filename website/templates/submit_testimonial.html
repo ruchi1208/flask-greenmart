@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+{% block title %}Write a Testimonial | GreenMart{% endblock %}
+
+{% block content %}
+
+{# ── Flash Messages ── #}
+<div class="container mt-3" style="max-width:960px;">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }} alert-dismissible fade show rounded-4">
+        {{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+{# ── Status Banner ── #}
+{% if existing %}
+<div class="container mb-3" style="max-width:960px;">
+  <div class="alert rounded-4
+    {% if existing.status=='approved' %}alert-success
+    {% elif existing.status=='rejected' %}alert-danger
+    {% else %}alert-warning{% endif %}">
+    <div class="d-flex align-items-start gap-3">
+      <span style="font-size:1.8rem;line-height:1;">
+        {% if existing.status=='approved' %}✅
+        {% elif existing.status=='rejected' %}❌
+        {% else %}⏳{% endif %}
+      </span>
+      <div>
+        <strong>
+          {% if existing.status=='approved' %}Testimonial Approved &amp; Published!
+          {% elif existing.status=='rejected' %}Testimonial Rejected
+          {% else %}Under Review — we'll get back to you shortly{% endif %}
+        </strong>
+        <p class="mb-0 small mt-1">
+          {% if existing.status=='approved' %}
+            Your review is live on our homepage. Reward points have been credited! 🎁
+          {% elif existing.status=='rejected' %}
+            {% if existing.admin_note %}Reason: {{ existing.admin_note }}<br>{% endif %}
+            Edit your review below and resubmit.
+          {% else %}
+            Reward points will be credited once approved.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+
+<div class="container pb-5" style="max-width:960px;">
+
+  {% if existing and existing.status == 'approved' %}
+  {# ── Approved read-only ── #}
+  <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5" style="border-left:5px solid #28a745!important;">
+    <div class="mb-2">
+      {% for i in range(1,6) %}
+        <i class="bi bi-star{% if i <= existing.rating %}-fill text-warning{% else %} text-muted{% endif %}"></i>
+      {% endfor %}
+    </div>
+    <h5 class="fw-bold mb-2">{{ existing.headline }}</h5>
+    <p class="text-muted">{{ existing.body }}</p>
+    {% if existing.is_featured %}
+      <span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>Featured on Homepage</span>
+    {% endif %}
+    <div class="mt-4">
+      <a href="{{ url_for('views.profile') }}" class="btn btn-outline-success rounded-3">
+        <i class="bi bi-arrow-left me-1"></i> Back to Profile
+      </a>
+      <a href="{{ url_for('views.my_rewards') }}" class="btn btn-success rounded-3 ms-2">
+        <i class="bi bi-wallet2 me-1"></i> My Rewards
+      </a>
+    </div>
+  </div>
+
+  {% else %}
+  {# ── SPLIT PANEL ── #}
+  <div class="gm-split-card">
+
+    {# LEFT #}
+    <div class="gm-left-panel">
+      <div>
+        <div class="gm-verified-pill mb-4">
+          <i class="bi bi-patch-check-fill me-1"></i> Verified reviews only
+        </div>
+        <h2 class="gm-left-title">
+          {% if existing %}Edit your GreenMart review{% else %}Share your GreenMart experience{% endif %}
+        </h2>
+        <p class="gm-left-sub">Genuine reviews help thousands of customers make better choices — and earn you reward points on approval.</p>
+
+        <div class="gm-reward-box mt-4">
+          <div class="gm-pts">{{ reward_points }}</div>
+          <div class="gm-pts-label">reward points on approval</div>
+        </div>
+
+        {% if wallet %}
+        <div class="gm-wallet-row mt-3">
+          <i class="bi bi-wallet2 me-2"></i>
+          Your balance: <strong>{{ wallet.points }} pts</strong>
+          <a href="{{ url_for('views.my_rewards') }}" class="gm-wallet-link ms-2">View history →</a>
+        </div>
+        {% endif %}
+      </div>
+
+      <div>
+        <div class="gm-trust-grid mt-4">
+          <div class="gm-trust-item"><span class="gm-trust-dot"></span>One review per customer</div>
+          <div class="gm-trust-item"><span class="gm-trust-dot"></span>Verified purchases</div>
+          <div class="gm-trust-item"><span class="gm-trust-dot"></span>Admin moderated</div>
+          <div class="gm-trust-item"><span class="gm-trust-dot"></span>Points on approval</div>
+        </div>
+        <a href="{{ url_for('views.profile') }}" class="gm-back-link mt-4 d-inline-block">
+          <i class="bi bi-arrow-left me-1"></i> Back to profile
+        </a>
+      </div>
+    </div>
+
+    {# RIGHT — wizard #}
+    <div class="gm-right-panel">
+
+      <div class="gm-step-row mb-4">
+        <div class="gm-step gm-step-active" id="s1">1</div>
+        <div class="gm-step-line" id="l1"></div>
+        <div class="gm-step gm-step-idle" id="s2">2</div>
+        <div class="gm-step-line" id="l2"></div>
+        <div class="gm-step gm-step-idle" id="s3">3</div>
+      </div>
+
+      <form method="POST" action="{{ url_for('views.submit_testimonial') }}" id="testimonialForm">
+        <input type="hidden" name="rating"     id="ratingInput"   value="{{ existing.rating if existing else '' }}">
+        <input type="hidden" name="headline"   id="headlineHidden" value="{{ existing.headline if existing else '' }}">
+        <input type="hidden" name="body"       id="bodyHidden"    value="{{ existing.body if existing else '' }}">
+        <input type="hidden" name="order_id"   id="orderHidden"   value="{{ existing.order_id if existing else '' }}">
+        <input type="hidden" name="product_id" id="productHidden" value="{{ existing.product_id if existing else '' }}">
+
+        {# PAGE 1 #}
+        <div id="page1">
+          <p class="gm-step-label">Step 1 of 3 — Your rating &amp; review</p>
+
+          <div class="gm-field mb-3">
+            <label class="gm-label">Your rating <span class="text-danger">*</span></label>
+            <div class="gm-star-row" id="starRow">
+              {% for i in range(1,6) %}
+              <span class="gm-star" data-v="{{ i }}" onclick="setRating({{ i }})">☆</span>
+              {% endfor %}
+            </div>
+            <div class="gm-star-label" id="starLabel">Tap a star to rate</div>
+          </div>
+
+          <div class="gm-field mb-3">
+            <label class="gm-label">Review title <span class="text-danger">*</span></label>
+            <input type="text" id="headlineInput" class="gm-input"
+                   maxlength="120"
+                   placeholder="e.g. Best organic store in town!"
+                   value="{{ existing.headline if existing else '' }}"
+                   oninput="updatePreview()">
+            <small class="gm-hint">Max 120 characters</small>
+          </div>
+
+          <div class="gm-field mb-3">
+            <label class="gm-label">Your review <span class="text-danger">*</span></label>
+            <textarea id="bodyInput" class="gm-textarea" rows="5" maxlength="1000"
+                      placeholder="Tell us about quality, delivery, freshness, service..."
+                      oninput="updatePreview();updateChar()">{{ existing.body if existing else '' }}</textarea>
+            <div class="d-flex justify-content-between">
+              <small class="gm-hint">Min 30 characters</small>
+              <small class="gm-hint"><span id="charCount">0</span>/1000</small>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end mt-4">
+            <button type="button" class="gm-btn-main" onclick="goPage(2)">
+              Continue <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+
+        {# PAGE 2 #}
+        <div id="page2" style="display:none;">
+          <p class="gm-step-label">Step 2 of 3 — Link your purchase</p>
+
+          {% if delivered_orders %}
+          <div class="gm-field mb-3">
+            <label class="gm-label">
+              <i class="bi bi-bag-check-fill text-success me-1"></i>Verified purchase (optional)
+            </label>
+            <select id="orderSel" class="gm-select"
+                    onchange="document.getElementById('orderHidden').value=this.value;updatePreview()">
+              <option value="">— Select a delivered order —</option>
+              {% for o in delivered_orders %}
+              <option value="{{ o.id }}"
+                {% if existing and existing.order_id == o.id %}selected{% endif %}>
+                {{ o.tracking_id or '#'+o.id|string }} · ₹{{ o.total_amount|round(0)|int }}
+                ({{ o.created_at.strftime('%d %b %Y') }})
+              </option>
+              {% endfor %}
+            </select>
+            <div class="mt-2">
+              <span class="gm-badge-verified">
+                <i class="bi bi-patch-check me-1"></i>Adds a Verified badge to your review
+              </span>
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="gm-field mb-3">
+            <label class="gm-label">About a specific product (optional)</label>
+            <select id="productSel" class="gm-select"
+                    onchange="document.getElementById('productHidden').value=this.value">
+              <option value="">— General experience —</option>
+              {% for p in products %}
+              <option value="{{ p.id }}"
+                {% if existing and existing.product_id == p.id %}selected{% endif %}>
+                {{ p.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="gm-field mb-3">
+            <div class="gm-terms-row">
+              <input type="checkbox" id="termsCheck" class="gm-checkbox">
+              <label for="termsCheck" class="gm-terms-label">
+                I confirm this review is genuine and based on my real experience with GreenMart.
+              </label>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="button" class="gm-btn-sec" onclick="goPage(1)">
+              <i class="bi bi-arrow-left me-1"></i> Back
+            </button>
+            <button type="button" class="gm-btn-main ms-auto" onclick="goPage(3)">
+              Preview <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+
+        {# PAGE 3 #}
+        <div id="page3" style="display:none;">
+          <p class="gm-step-label">Step 3 of 3 — Preview &amp; submit</p>
+          <p class="gm-hint mb-3">This is exactly how your review will appear on the homepage.</p>
+
+          <div class="gm-preview-card">
+            <div class="gm-preview-stars" id="prevStars">☆☆☆☆☆</div>
+            <div class="gm-preview-headline" id="prevHeadline">Your title</div>
+            <div class="gm-preview-body" id="prevBody">Your review...</div>
+            <div class="gm-preview-author">
+              <div class="gm-avatar">{{ current_user.name[0].upper() }}</div>
+              <div>
+                <div class="gm-author-name">{{ current_user.name }}</div>
+                <div class="gm-author-sub">GreenMart customer</div>
+              </div>
+              <div class="ms-auto" id="verifiedBadgePreview" style="display:none;">
+                <span class="gm-badge-verified"><i class="bi bi-patch-check me-1"></i>Verified</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="button" class="gm-btn-sec" onclick="goPage(2)">
+              <i class="bi bi-arrow-left me-1"></i> Edit
+            </button>
+            <button type="submit" class="gm-btn-main ms-auto">
+              <i class="bi bi-send me-1"></i>
+              {% if existing %}Update &amp; Resubmit{% else %}Submit Testimonial{% endif %}
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+
+<style>
+.gm-split-card{display:grid;grid-template-columns:1fr 1.45fr;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,.10);min-height:520px;}
+@media(max-width:768px){.gm-split-card{grid-template-columns:1fr;}}
+.gm-left-panel{background:#1a4a22;padding:2.5rem 2rem;display:flex;flex-direction:column;justify-content:space-between;}
+.gm-verified-pill{display:inline-flex;align-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:30px;padding:5px 14px;font-size:.78rem;color:rgba(255,255,255,.85);}
+.gm-left-title{font-size:1.4rem;font-weight:700;color:#fff;line-height:1.35;margin-top:.75rem;}
+.gm-left-sub{font-size:.85rem;color:rgba(255,255,255,.65);line-height:1.7;margin-top:.5rem;}
+.gm-reward-box{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:1.1rem 1.3rem;}
+.gm-pts{font-size:2.4rem;font-weight:700;color:#fff;line-height:1;}
+.gm-pts-label{font-size:.78rem;color:rgba(255,255,255,.6);margin-top:4px;}
+.gm-wallet-row{font-size:.82rem;color:rgba(255,255,255,.7);}
+.gm-wallet-link{color:#a5d6a7;text-decoration:none;}
+.gm-wallet-link:hover{color:#fff;}
+.gm-trust-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.gm-trust-item{display:flex;align-items:center;gap:6px;font-size:.78rem;color:rgba(255,255,255,.65);}
+.gm-trust-dot{width:6px;height:6px;border-radius:50%;background:#66bb6a;flex-shrink:0;}
+.gm-back-link{font-size:.82rem;color:rgba(255,255,255,.55);text-decoration:none;}
+.gm-back-link:hover{color:#fff;}
+.gm-right-panel{background:#fff;padding:2.5rem 2rem;}
+.gm-step-row{display:flex;align-items:center;gap:6px;}
+.gm-step{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;transition:all .25s;}
+.gm-step-active{background:#1a4a22;color:#fff;}
+.gm-step-done{background:#4caf50;color:#fff;}
+.gm-step-idle{background:#f0f0f0;color:#999;border:1px solid #ddd;}
+.gm-step-line{flex:1;height:2px;background:#eee;border-radius:2px;transition:background .25s;}
+.gm-step-line.done{background:#4caf50;}
+.gm-step-label{font-size:.8rem;color:#888;margin-bottom:.75rem;}
+.gm-label{display:block;font-size:.83rem;font-weight:600;color:#333;margin-bottom:6px;}
+.gm-input,.gm-textarea,.gm-select{width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:.88rem;color:#222;background:#fff;transition:border .15s,box-shadow .15s;font-family:inherit;}
+.gm-input:focus,.gm-textarea:focus,.gm-select:focus{outline:none;border-color:#2e7d32;box-shadow:0 0 0 3px rgba(46,125,50,.12);}
+.gm-textarea{resize:none;line-height:1.6;}
+.gm-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer;}
+.gm-hint{font-size:.76rem;color:#999;}
+.gm-star-row{display:flex;gap:6px;margin-bottom:4px;}
+.gm-star{font-size:2rem;cursor:pointer;color:#ddd;transition:transform .1s,color .1s;user-select:none;line-height:1;}
+.gm-star:hover{transform:scale(1.2);}
+.gm-star-label{font-size:.8rem;color:#888;min-height:18px;}
+.gm-terms-row{display:flex;align-items:flex-start;gap:10px;background:#f9fdf9;border:1px solid #c8e6c9;border-radius:10px;padding:.85rem 1rem;}
+.gm-checkbox{margin-top:2px;accent-color:#2e7d32;width:16px;height:16px;cursor:pointer;}
+.gm-terms-label{font-size:.82rem;color:#555;line-height:1.5;cursor:pointer;}
+.gm-btn-main{padding:10px 22px;background:#1a4a22;color:#fff;border:none;border-radius:10px;font-size:.88rem;font-weight:600;cursor:pointer;transition:background .15s,transform .1s;font-family:inherit;}
+.gm-btn-main:hover{background:#2e7d32;}
+.gm-btn-main:active{transform:scale(.98);}
+.gm-btn-sec{padding:10px 18px;background:#f5f5f5;color:#555;border:1.5px solid #e0e0e0;border-radius:10px;font-size:.88rem;cursor:pointer;font-family:inherit;transition:background .15s;}
+.gm-btn-sec:hover{background:#ebebeb;}
+.gm-badge-verified{display:inline-flex;align-items:center;background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9;border-radius:20px;padding:3px 11px;font-size:.76rem;font-weight:600;}
+.gm-preview-card{background:#f9fdf9;border:1.5px solid #c8e6c9;border-radius:14px;padding:1.25rem 1.4rem;}
+.gm-preview-stars{font-size:1.1rem;margin-bottom:6px;}
+.gm-preview-headline{font-size:.95rem;font-weight:700;color:#1a4a22;margin-bottom:6px;}
+.gm-preview-body{font-size:.83rem;color:#555;line-height:1.65;}
+.gm-preview-author{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid #dcedc8;}
+.gm-avatar{width:34px;height:34px;border-radius:50%;background:#1a4a22;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0;}
+.gm-author-name{font-size:.85rem;font-weight:600;color:#222;}
+.gm-author-sub{font-size:.76rem;color:#888;}
+</style>
+
+
+<script>
+const starLabels = ['','Terrible','Poor','Okay','Good','Excellent'];
+let currentRating = {{ existing.rating if existing else 0 }};
+
+function setRating(v) {
+  currentRating = v;
+  document.getElementById('ratingInput').value = v;
+  document.querySelectorAll('.gm-star').forEach((s, i) => {
+    s.textContent = i < v ? '★' : '☆';
+    s.style.color  = i < v ? '#f5a623' : '#ddd';
+  });
+  document.getElementById('starLabel').textContent = starLabels[v] || 'Tap a star to rate';
+  updatePreview();
+}
+
+function updateChar() {
+  const b = document.getElementById('bodyInput');
+  if (b) document.getElementById('charCount').textContent = b.value.length;
+}
+
+function updatePreview() {
+  const h = (document.getElementById('headlineInput').value || 'Your title');
+  const b = (document.getElementById('bodyInput').value || 'Your review text will appear here...');
+  const stars = Array(5).fill(0).map((_,i) => i < currentRating ? '★' : '☆').join('');
+  document.getElementById('prevStars').textContent = stars;
+  document.getElementById('prevStars').style.color = currentRating > 0 ? '#f5a623' : '#ccc';
+  document.getElementById('prevHeadline').textContent = h;
+  document.getElementById('prevBody').textContent = b.slice(0, 200) + (b.length > 200 ? '…' : '');
+  const oSel = document.getElementById('orderSel');
+  const vBadge = document.getElementById('verifiedBadgePreview');
+  if (oSel && vBadge) vBadge.style.display = oSel.value ? 'block' : 'none';
+}
+
+function goPage(n) {
+  if (n > 1) {
+    if (!currentRating) { alert('Please select a star rating.'); return; }
+    if (!document.getElementById('headlineInput').value.trim()) { alert('Please add a review title.'); return; }
+    if (document.getElementById('bodyInput').value.trim().length < 30) { alert('Your review must be at least 30 characters.'); return; }
+    document.getElementById('headlineHidden').value = document.getElementById('headlineInput').value;
+    document.getElementById('bodyHidden').value     = document.getElementById('bodyInput').value;
+  }
+  if (n > 2) {
+    if (!document.getElementById('termsCheck').checked) { alert('Please confirm your review is genuine.'); return; }
+    const oSel = document.getElementById('orderSel');
+    const pSel = document.getElementById('productSel');
+    if (oSel) document.getElementById('orderHidden').value   = oSel.value;
+    if (pSel) document.getElementById('productHidden').value = pSel.value;
+    updatePreview();
+  }
+  [1,2,3].forEach(i => {
+    document.getElementById('page'+i).style.display = i===n ? 'block' : 'none';
+    const st = document.getElementById('s'+i);
+    st.className = 'gm-step ' + (i<n ? 'gm-step-done' : i===n ? 'gm-step-active' : 'gm-step-idle');
+    st.textContent = i < n ? '✓' : i;
+    if (i < 3) {
+      const ln = document.getElementById('l'+i);
+      ln.className = 'gm-step-line' + (i < n ? ' done' : '');
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateChar();
+  document.querySelectorAll('.gm-star').forEach(s => {
+    s.addEventListener('mouseover', () => {
+      const v = parseInt(s.dataset.v);
+      document.querySelectorAll('.gm-star').forEach((ss,i) => {
+        ss.textContent = i<v?'★':'☆';
+        ss.style.color  = i<v?'#f5a623':'#ddd';
+      });
+    });
+    s.addEventListener('mouseout', () => setRating(currentRating));
+  });
+  if (currentRating > 0) setRating(currentRating);
+});
+</script>
+
+{% endblock %}

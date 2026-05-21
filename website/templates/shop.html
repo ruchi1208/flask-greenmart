@@ -18,44 +18,146 @@
 
     <!-- TAB BUTTONS -->
     <ul class="nav nav-tabs mb-4" id="categoryTabs" role="tablist">
-
         <li class="nav-item" role="presentation">
             <a class="nav-link active" id="fruits-veg-tab" data-bs-toggle="tab" href="#fruits-veg" role="tab">
                 <i class="fa-solid fa-apple-whole me-2"></i> Fruits & Vegetables
             </a>
         </li>
-
         <li class="nav-item" role="presentation">
             <a class="nav-link" id="dairy-bev-tab" data-bs-toggle="tab" href="#dairy-bev" role="tab">
                 <i class="fa-solid fa-cow me-2"></i> Dairy & Beverages
             </a>
         </li>
-
         <li class="nav-item" role="presentation">
             <a class="nav-link" id="grains-nuts-tab" data-bs-toggle="tab" href="#grains-nuts" role="tab">
                 <i class="fa-solid fa-seedling me-2"></i> Grains & Nuts
             </a>
         </li>
-
         <li class="nav-item" role="presentation">
             <a class="nav-link" id="spices-snacks-tab" data-bs-toggle="tab" href="#spices-snacks" role="tab">
                 <i class="fa-solid fa-pepper-hot me-2"></i> Spices & Snacks
             </a>
         </li>
-
         <li class="nav-item" role="presentation">
             <a class="nav-link" id="frozen-tab" data-bs-toggle="tab" href="#frozen" role="tab">
                 <i class="fa-solid fa-snowflake me-2"></i> Frozen Foods
             </a>
         </li>
-
         <li class="nav-item" role="presentation">
             <a class="nav-link" id="personal-tab" data-bs-toggle="tab" href="#personal" role="tab">
                 <i class="fa-solid fa-spa me-2"></i> Personal Care
             </a>
         </li>
-
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="new-tab" data-bs-toggle="tab" href="#new-products" role="tab">
+                <i class="fa-solid fa-star me-2"></i> New Arrivals
+            </a>
+        </li>
     </ul>
+
+    <!-- ── REUSABLE MACRO ── -->
+{% macro product_card(product, col_class="col-lg-2 col-md-4 col-6 mt-4") %}
+<div class="col-lg-3 col-md-4 col-6 mb-4 product-card">
+  <div class="product-img-box position-relative">
+    <img src="{{ product.image }}" class="img-fluid" style="height:200px; object-fit:cover;">
+
+    {# Flash Sale Badge #}
+    <span class="flash-sale-badge d-none"
+          data-product-id="{{ product.id }}"
+          style="position:absolute; top:8px; left:8px; z-index:10;
+                 background:#dc2626; color:#fff; font-size:11px; font-weight:700;
+                 padding:3px 8px; border-radius:20px;">
+      ⚡ <span class="badge-pct"></span>% OFF
+    </span>
+
+    {# Product Sale Badge #}
+    {% if product.active_sale %}
+      <span style="position:absolute; top:38px; left:8px; z-index:10;
+                   background:#16a34a; color:#fff; font-size:11px; font-weight:700;
+                   padding:3px 8px; border-radius:20px;">
+        🏷 {{ product.active_sale.discount_pct | int }}% OFF
+        {% if product.active_sale.label %} · {{ product.active_sale.label }}{% endif %}
+      </span>
+    {% endif %}
+
+    <div class="hover-icons">
+      <a href="{{ url_for('views.product_detail', product_id=product.id) }}">
+        <i class="bi bi-eye"></i>
+      </a>
+      <a href="{{ url_for('views.add_to_wishlist', product_id=product.id) }}">
+        <i class="bi bi-heart"></i>
+      </a>
+      <a href="#" onclick="shareProduct('{{ product.name }}', '{{ product.id }}'); return false;">
+        <i class="bi bi-share-fill"></i>
+      </a>
+    </div>
+  </div>
+
+  <h6 class="mt-2">{{ product.name }}</h6>
+
+  {# Price Row #}
+  {% if product.active_sale %}
+    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+      <h6 class="mb-0 text-decoration-line-through text-muted" style="font-size:13px;">
+        ₹{{ product.price }}
+      </h6>
+      <h6 class="mb-0 fw-bold" style="color:#dc2626; font-size:16px;">
+        ₹{{ product.active_sale.sale_price }}
+      </h6>
+    </div>
+  {% else %}
+    <h6 class="mb-1 original-price-{{ product.id }}" style="color:#0B7D2A">
+      ₹{{ product.price }} / kg
+    </h6>
+  {% endif %}
+
+  {# Stock Status + Add to Cart Form #}
+  {% if product.stock <= 0 %}
+    <p class="mb-1"><span class="badge bg-danger">Out of Stock</span></p>
+    <button class="btn btn-secondary w-100 mt-1" disabled>
+      <i class="bi bi-x-circle me-1"></i> Unavailable
+    </button>
+
+  {% else %}
+    {% if product.stock <= 5 %}
+      <p class="mb-1">
+        <span class="badge bg-warning text-dark">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          Only {{ product.stock }} left!
+        </span>
+      </p>
+    {% else %}
+      <p class="mb-1 text-muted small">In Stock: {{ product.stock }}</p>
+    {% endif %}
+
+    {# ✅ CORRECT: product.id, not p.id #}
+    <form action="{{ url_for('views.add_to_cart', product_id=product.id) }}" method="POST">
+      <input type="hidden" name="id" value="{{ product.id }}">
+
+      {% if product.variants %}
+        <select name="variant_id"
+                class="form-select form-select-sm mb-2"
+                onchange="updatePrice(this, {{ product.id }}, {{ product.price }})">
+          <option value="">-- Select Size --</option>
+          {% for v in product.variants if v.is_active %}
+            <option value="{{ v.id }}"
+                    data-price="{{ v.price }}"
+                    data-stock="{{ v.stock }}">
+              {{ v.label }} — ₹{{ v.price }}
+            </option>
+          {% endfor %}
+        </select>
+      {% endif %}
+
+      <input type="hidden" name="quantity" value="1">
+      <button type="submit" class="btn btn-success w-100">
+        <i class="bi bi-cart-plus me-1"></i> Add to Cart
+      </button>
+    </form>
+  {% endif %}
+
+</div>
+{% endmacro %}
 
     <!-- TAB CONTENT -->
     <div class="tab-content">
@@ -63,52 +165,10 @@
         <!-- FRUITS & VEGETABLES -->
         <div class="tab-pane fade show active" id="fruits-veg" role="tabpanel">
             <div class="row text-center justify-content-center">
-
-                {% for id, img, name, price in [
-                ('36', image1, "Apple", "$120"),
-                ('37', image2, "Grapes", "$130"),
-                ('38', image3, "Banana", "$90"),
-                ('39', image4, "Orange", "$100"),
-                ('40', image5, "Mango", "$150"),
-                ('41', image6, "Pineapple", "$180"),
-                ('42', image7, "Strawberry", "$160"),
-                ('43', image8, "Kiwi", "$140"),
-                ('44', image9, "Tomato", "$80"),
-                ('45', image10, "Broccoli", "$120"),
-                ('46', image11, "Carrot", "$70"),
-                ('47', image12, "Spinach", "$60"),
-                ('48', image13, "Lettuce", "$50"),
-                ('49', image14, "Bell Pepper", "$110"),
-                ('50', image15, "Cauliflower", "$100"),
-                ('51', image16, "Cucumber", "$40")
-                ] %}
-
-                <div class="col-lg-3 col-md-4 col-6 mb-4 product-card">
-                    <div class="product-img-box position-relative">
-                        <img src="{{ img }}" class="img-fluid" style="height:200px;">
-                        <div class="hover-icons">
-                            <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                                <i class="bi bi-heart"></i>
-                            </a>
-                            <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-                        </div>
-                    </div>
-                    <h6 class="mt-2">{{ name }}</h6>
-                    <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-                     <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-20">
-                Add to Cart
-              </button>
-            </form>
-                </div>
-
+                {% for product in fruits_veg %}
+                    {{ product_card(product) }}
+                {% else %}
+                    {{ empty_state() }}
                 {% endfor %}
             </div>
         </div>
@@ -116,52 +176,10 @@
         <!-- DAIRY & BEVERAGES -->
         <div class="tab-pane fade" id="dairy-bev" role="tabpanel">
             <div class="row text-center justify-content-center">
-
-                {% for id, img, name, price in [
-                ('52', image17, "Fresh Cow Milk", "$60"),
-                ('53', image18, "Buffalo Milk", "$70"),
-                ('54', image19, "Cheese", "$120"),
-                ('55', image20, "Paneer", "$110"),
-                ('56', image21, "Butter", "$90"),
-                ('57', image22, "Ghee", "$350"),
-                ('58', image23, "Yogurt / Curd", "$50"),
-                ('59', image24, "Eggs (Farm Fresh)", "$80"),
-                ('60', image25, "Orange Juice", "$80"),
-                ('61', image26, "Apple Juice", "$85"),
-                ('62', image27, "Coconut Water", "$60"),
-                ('63', image28, "Cold Coffee", "$120"),
-                ('64', image29, "Iced Tea", "$90"),
-                ('65', image30, "Lemon Soda", "$50"),
-                ('66', image31, "Energy Drink", "$150"),
-                ('67', image32, "Green Tea", "$110")
-                ] %}
-
-                <div class="col-lg-3 col-md-4 col-6 mb-4 product-card">
-                    <div class="product-img-box position-relative">
-                        <img src="{{ img }}" class="img-fluid" style="height:200px;">
-                        <div class="hover-icons">
-                            <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                                <i class="bi bi-heart"></i>
-                            </a>
-                            <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-                        </div>
-                    </div>
-                    <h6 class="mt-2">{{ name }}</h6>
-                    <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-                     <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-20">
-                Add to Cart
-              </button>
-            </form>
-                </div>
-
+                {% for product in dairy_bev %}
+                    {{ product_card(product) }}
+                {% else %}
+                    {{ empty_state() }}
                 {% endfor %}
             </div>
         </div>
@@ -169,183 +187,81 @@
         <!-- GRAINS & NUTS -->
         <div class="tab-pane fade" id="grains-nuts" role="tabpanel">
             <div class="row text-center justify-content-center">
-
-                {% for id, img, name, price in [
-                ('68', image33, "Almonds", "$250"),
-                ('69', image34, "Cashews", "$300"),
-                ('70', image35, "Walnuts", "$350"),
-                ('71', image36, "Peanuts", "$120"),
-                ('72', image37, "Pistachios", "$400"),
-                ('73', image38, "Raisins", "$180"),
-                ('74', image39, "Chia Seeds", "$150"),
-                ('75', image40, "Flax Seeds", "$130"),
-                ('76', image41, "Oats", "$90"),
-                ('77', image42, "Quinoa", "$220")
-                ] %}
-
-                <div class="col-lg-3 col-md-4 col-6 mb-4 product-card">
-                    <div class="product-img-box position-relative">
-                        <img src="{{ img }}" class="img-fluid" style="height:200px;">
-                        <div class="hover-icons">
-                            <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                                <i class="bi bi-heart"></i>
-                            </a>
-                            <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-                        </div>
-                    </div>
-                    <h6 class="mt-2">{{ name }}</h6>
-                    <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-                     <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-20">
-                Add to Cart
-              </button>
-            </form>
-                </div>
-
+                {% for product in grains_nuts %}
+                    {{ product_card(product) }}
+                {% else %}
+                    {{ empty_state() }}
                 {% endfor %}
             </div>
         </div>
+
         <!-- SPICES & SNACKS -->
         <div class="tab-pane fade" id="spices-snacks" role="tabpanel">
             <div class="row text-center justify-content-center">
-
-                {% for id, img, name, price in [
-                ('78', image43, "Red Chili Powder", "$80"),
-                ('79', image44, "Turmeric Powder", "$70"),
-                ('80', image45, "Cumin Seeds", "$90"),
-                ('81', image46, "Black Pepper", "$150"),
-                ('82', image47, "Salted Chips", "$60"),
-                ('83', image48, "Healthy Oats Cookies", "$50")
-                ] %}
-
-                <div class="col-lg-3 col-md-4 col-6 mb-4 product-card">
-                    <div class="product-img-box position-relative">
-                        <img src="{{ img }}" class="img-fluid" style="height:200px;">
-                        <div class="hover-icons">
-                            <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                                <i class="bi bi-heart"></i>
-                            </a>
-                            <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-                        </div>
-                    </div>
-                    <h6 class="mt-2">{{ name }}</h6>
-                    <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-                     <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-20">
-                Add to Cart
-              </button>
-            </form>
-                </div>
-
+                {% for product in spices_snacks %}
+                    {{ product_card(product) }}
+                {% else %}
+                    {{ empty_state() }}
                 {% endfor %}
             </div>
         </div>
-
-
 
         <!-- FROZEN FOODS -->
         <div class="tab-pane fade" id="frozen" role="tabpanel">
             <div class="row text-center justify-content-center">
-
-                {% for id, img, name, price in [
-                ('84', image49, "Frozen French Fries", "$80"),
-                ('85', image50, "Frozen Veg Momos", "$70"),
-                ('86', image51, "Frozen Green Juice Cube", "$90"),
-                ('87', image52, "Frozen Ginger Cube", "$150"),
-                ('88', image53, "Frozen Potato Wedges", "$50"),
-                ('89', image54, "Frozen Blueberry", "$150")
-                ] %}
-
-                <div class="col-lg-3 col-md-4 col-6 mb-4 product-card">
-                    <div class="product-img-box position-relative">
-                        <img src="{{ img }}" class="img-fluid" style="height:200px;">
-                        <div class="hover-icons">
-                            <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                                <i class="bi bi-heart"></i>
-                            </a>
-                           <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-                        </div>
-                    </div>
-                    <h6 class="mt-2">{{ name }}</h6>
-                    <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-                     <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-20">
-                Add to Cart
-              </button>
-            </form>
-                </div>
-
+                {% for product in frozen %}
+                    {{ product_card(product) }}
+                {% else %}
+                    {{ empty_state() }}
                 {% endfor %}
             </div>
         </div>
 
-        <!-- personal -->
+        <!-- PERSONAL CARE -->
         <div class="tab-pane fade" id="personal" role="tabpanel">
             <div class="row text-center justify-content-center">
-
-                {% for id, img, name, price in [
-                ('90', image55, "Organic Aloe Vera Gel", "$120"),
-                ('91', image56, "Herbal Shampoo", "$180"),
-                ('92', image57, "Organic Body Lotion", "$200"),
-                ('93', image58, "Organic Fase-Wash", "$150"),
-                ('94', image59, "Cold Pressed Coconut Oil", "$250")
-                ] %}
-
-                <div class="col-lg-3 col-md-4 col-6 mb-4 product-card">
-                    <div class="product-img-box position-relative">
-                        <img src="{{ img }}" class="img-fluid" style="height:200px;">
-                        <div class="hover-icons">
-                            <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                                <i class="bi bi-heart"></i>
-                            </a>
-                            <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-                        </div>
-                    </div>
-                    <h6 class="mt-2">{{ name }}</h6>
-                    <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-                    <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-20">
-                Add to Cart
-              </button>
-            </form>
-                </div>
-
+                {% for product in personal %}
+                    {{ product_card(product) }}
+                {% else %}
+                    {{ empty_state() }}
                 {% endfor %}
             </div>
         </div>
 
+        <!-- NEW ARRIVALS -->
+        <div class="tab-pane fade" id="new-products" role="tabpanel">
+            <div class="row text-center justify-content-center">
+                {% for product in new_arrivals %}
+                    {{ product_card(product) }}
+                {% else %}
+                    {{ empty_state() }}
+                {% endfor %}
+            </div>
+        </div>
 
     </div> <!-- END TAB-CONTENT -->
 
+</div>
 
+<script>
+function updatePrice(select, productId, basePrice) {
+  const opt = select.options[select.selectedIndex];
+  const priceEl = document.querySelector('.original-price-' + productId);
+  if (!priceEl) return;
+  if (opt.value) {
+    priceEl.textContent = '₹' + opt.dataset.price;
+    const btn = select.closest('form').querySelector('button[type="submit"]');
+    if (opt.dataset.stock == '0') {
+      btn.disabled = true;
+      btn.textContent = 'Out of Stock';
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Add to Cart';
+    }
+  } else {
+    priceEl.textContent = '₹' + basePrice;
+  }
+}
+</script>
 
-
-    {% endblock %}
+{% endblock %}

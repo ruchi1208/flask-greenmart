@@ -22,7 +22,7 @@
 
             <tr>
                 <td>
-                    <img src="{{ url_for('static', filename=item['image']) }}" width="60">
+                    <img src="{{ item.image }}" width="60">
                 </td>
 
                 <td>
@@ -36,39 +36,20 @@
                 <td><span class="text-success fw-bold">In Stock</span></td>
 
                 <td>
-    <form action="{{ url_for('views.add_to_cart', product_id=item['id']) }}" method="POST">
+                    <form action="{{ url_for('views.add_to_cart', product_id=item['id']) }}" method="POST">
 
-        <button type="submit" class="btn btn-success btn-sm">
-            Move to Cart
-        </button>
-    </form>
-</td>
+                        <button type="submit" class="btn btn-success btn-sm">
+                            Move to Cart
+                        </button>
+                    </form>
+                </td>
 
 
                 <td>
-                    <div class="dropdown">
-                        <i class="fa fa-share-alt fs-5" data-bs-toggle="dropdown"></i>
-                        <ul class="dropdown-menu p-2">
-                            <li>
-                                <a class="dropdown-item" target="_blank"
-                                    href="https://wa.me/?text={{ item['name'] }} - {{ request.url_root }}product/{{ item['id'] }}">
-                                    WhatsApp
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" target="_blank"
-                                    href="https://www.facebook.com/sharer/sharer.php?u={{ request.url_root }}product/{{ item['id'] }}">
-                                    Facebook
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" target="_blank"
-                                    href="https://twitter.com/intent/tweet?text={{ item['name'] }}&url={{ request.url_root }}product/{{ item['id'] }}">
-                                    Twitter
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
+                    <a href="#" onclick="shareProduct('{{ item['name'] | e }}', '{{ item['id'] }}'); return false;"
+                        class="text-success">
+                        <i class="bi bi-share-fill fs-5"></i>
+                    </a>
                 </td>
 
                 <td>

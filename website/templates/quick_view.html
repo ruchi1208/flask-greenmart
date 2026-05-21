@@ -1,16 +1,362 @@
 {% extends "base.html" %}
 
-{% block title %}Quick View | {{ product.name }}{% endblock %}
+{% block title %}{{ product.name }} | GreenMart{% endblock %}
 
 {% block content %}
-<div class="quick-view-modal">
-    <div class="modal-content">
-        <span class="close"><a href="{{ url_for('views.home') }}">&times;</a></span>
-        <img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}" height="300px">
-        <h3>{{ product.name }}</h3>
-        <p>{{ product.description }}</p>
-        <h5 style="color:#0B7D2A">${{ product.price }}</h5>
-        <a href="#" class="btn btn-success mt-2" style="border-radius:8px;">Add To Cart</a>
+
+<style>
+  .stock-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .stock-dot.in  { background: #22c55e; }
+  .stock-dot.low { background: #f59e0b; }
+  .stock-dot.out { background: #dc3545; }
+
+  .qty-box { display: flex; align-items: center; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; background: #fff; }
+  .qty-btn { width: 38px; height: 42px; background: #f8f9fa; border: none; font-size: 18px; color: #0B7D2A; cursor: pointer; }
+  .qty-btn:hover { background: #e9ecef; }
+  .qty-input { width: 46px; text-align: center; border: none; font-size: 15px; font-weight: 700; outline: none; -moz-appearance: textfield; }
+  .qty-input::-webkit-outer-spin-button,
+  .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .star-picker { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; }
+  .star-picker input[type="radio"] { display: none; }
+  .star-picker label { font-size: 26px; color: #ddd; cursor: pointer; transition: color .15s; line-height: 1; }
+  .star-picker input[type="radio"]:checked ~ label,
+  .star-picker label:hover,
+  .star-picker label:hover ~ label { color: #f59e0b; }
+
+  .product-img-main { width: 100%; height: 340px; object-fit: cover; border-radius: 16px; }
+
+  .review-avatar { width: 36px; height: 36px; border-radius: 50%; background: #d1fae5; color: #065f46; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  .similar-card { border-radius: 12px; overflow: hidden; transition: transform .2s, box-shadow .2s; }
+  .similar-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,.1); }
+  .similar-card img { width: 100%; height: 150px; object-fit: cover; }
+</style>
+
+<div class="container-xl py-3">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('views.home') }}" class="text-success text-decoration-none">Home</a></li>
+      {% if product.category %}
+      <li class="breadcrumb-item"><a href="#" class="text-success text-decoration-none">{{ product.category.name }}</a></li>
+      {% endif %}
+      <li class="breadcrumb-item active fw-semibold">{{ product.name }}</li>
+    </ol>
+  </nav>
+
+  <!-- ── Product Main Card ── -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="row g-0">
+
+      <!-- Image -->
+      <div class="col-md-5 bg-light rounded-start-4 d-flex flex-column align-items-center justify-content-center p-4">
+        <img src="{{ product.image }}" alt="{{ product.name }}" class="product-img-main mb-3">
+        <div class="d-flex flex-wrap gap-2 justify-content-center">
+          <span class="badge rounded-pill" style="background:#d1fae5; color:#065f46;">🌿 Farm Fresh</span>
+          <span class="badge rounded-pill" style="background:#d1fae5; color:#065f46;">No Preservatives</span>
+          <span class="badge rounded-pill" style="background:#d1fae5; color:#065f46;">Locally Sourced</span>
+        </div>
+      </div>
+
+      <!-- Info -->
+      <div class="col-md-7 p-4 p-md-5">
+
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+          <span class="badge rounded-pill text-bg-success" style="font-size:11px;">
+            {% if product.category %}{{ product.category.name }}{% else %}Organic{% endif %}
+          </span>
+          {% if product.stock > 0 %}
+            <span class="badge rounded-pill border text-success bg-white" style="font-size:11px;">In Stock</span>
+          {% else %}
+            <span class="badge rounded-pill text-bg-danger" style="font-size:11px;">Out of Stock</span>
+          {% endif %}
+        </div>
+
+        <h1 class="fw-bold mb-1" style="font-size:1.8rem; color:#111;">{{ product.name }}</h1>
+
+        <!-- Stars -->
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span style="color:#f59e0b; font-size:15px; letter-spacing:1px;">
+            {% if reviews %}
+              {% set full = avg_rating|int %}
+              {% for i in range(full) %}★{% endfor %}{% for i in range(5 - full) %}☆{% endfor %}
+            {% else %}☆☆☆☆☆{% endif %}
+          </span>
+          <small class="text-muted">
+            {% if reviews %}<strong class="text-dark">{{ avg_rating }}</strong> · {{ reviews|length }} review{{ 's' if reviews|length != 1 else '' }}
+            {% else %}No ratings yet{% endif %}
+          </small>
+        </div>
+
+        <hr class="my-3">
+
+        <!-- Price -->
+        <div class="d-flex align-items-baseline gap-2 flex-wrap mb-1">
+          <span class="fw-bold" style="font-size:2rem; color:#0B7D2A;">₹{{ "%.0f"|format(product.price) }} / kg</span>
+          {% if product.previous_price %}
+            <span class="text-muted text-decoration-line-through" style="font-size:1rem;">₹{{ "%.0f"|format(product.previous_price) }}</span>
+            <span class="badge text-bg-warning text-dark" style="font-size:11px;">{{ ((product.previous_price - product.price)/product.previous_price*100)|int }}% OFF</span>
+          {% endif %}
+        </div>
+        <small class="text-muted">per kg · inclusive of all taxes</small>
+
+        <!-- Stock bar -->
+        <div class="d-flex align-items-center gap-2 mt-3 mb-3 p-2 bg-light rounded-3">
+          {% if product.stock > 10 %}
+            <span class="stock-dot in"></span><span class="fw-semibold" style="font-size:13px;">In Stock</span>
+          {% elif product.stock > 0 %}
+            <span class="stock-dot low"></span><span class="fw-semibold" style="font-size:13px;">Only {{ product.stock }} left</span>
+          {% else %}
+            <span class="stock-dot out"></span><span class="fw-semibold text-danger" style="font-size:13px;">Out of Stock</span>
+          {% endif %}
+          <div class="progress flex-grow-1" style="height:5px;">
+            <div class="progress-bar bg-success" style="width:{{ [product.stock*2,100]|min }}%;"></div>
+          </div>
+          <small class="text-muted">{{ product.stock }} units</small>
+        </div>
+
+        <p class="text-muted mb-4" style="font-size:14px; line-height:1.7;">
+          {{ product.description or "Fresh, organic and carefully sourced from local farms. No preservatives, 100% natural goodness delivered right to your door." }}
+        </p>
+
+        <!-- Add to Cart -->
+        <form action="{{ url_for('views.add_to_cart', product_id=product.id) }}" method="POST">
+  <input type="hidden" name="id" value="{{ product.id }}">
+  <input type="hidden" name="quantity" id="qtyHidden" value="1">
+
+  {# ✅ Variants dropdown add karo #}
+  {% if product.variants %}
+  <div class="mb-3">
+    <label class="form-label fw-semibold" style="font-size:13px;">Select Size / Weight</label>
+    <select name="variant_id" class="form-select" id="variantSelect"
+            onchange="updateVariantPrice(this)">
+      <option value="">-- Default --</option>
+      {% for v in product.variants if v.is_active %}
+        <option value="{{ v.id }}"
+                data-price="{{ v.price }}"
+                data-stock="{{ v.stock }}">
+          {{ v.label }} — ₹{{ v.price }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+        <!-- Feature icons -->
+        <div class="row g-2 pt-3 border-top">
+          <div class="col-4 text-center">
+            <div class="p-2 bg-light rounded-3">
+              <i class="bi bi-truck text-success fs-5 d-block mb-1"></i>
+              <small class="fw-semibold text-muted" style="font-size:11px;">Free Delivery</small>
+            </div>
+          </div>
+          <div class="col-4 text-center">
+            <div class="p-2 bg-light rounded-3">
+              <i class="bi bi-shield-check text-success fs-5 d-block mb-1"></i>
+              <small class="fw-semibold text-muted" style="font-size:11px;">100% Organic</small>
+            </div>
+          </div>
+          <div class="col-4 text-center">
+            <div class="p-2 bg-light rounded-3">
+              <i class="bi bi-arrow-repeat text-success fs-5 d-block mb-1"></i>
+              <small class="fw-semibold text-muted" style="font-size:11px;">Easy Returns</small>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
+  </div>
+
+  <!-- ── Tabs ── -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-0">
+      <ul class="nav nav-tabs px-4 pt-2" id="productTabs">
+        <li class="nav-item">
+          <button class="nav-link active fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-desc" type="button">Description</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-nutrition" type="button">Nutrition</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link fw-semibold" data-bs-toggle="tab" data-bs-target="#tab-reviews" type="button">Reviews ({{ reviews|length }})</button>
+        </li>
+      </ul>
+
+      <div class="tab-content p-4">
+
+        <!-- Description -->
+        <div class="tab-pane fade show active" id="tab-desc">
+          <p class="text-muted" style="line-height:1.8;">{{ product.description or "Fresh, organic and carefully sourced from trusted local farms." }}</p>
+          <p class="text-muted mt-2" style="line-height:1.8;">We work directly with farmers to ensure every item reaches your door at peak freshness. No middlemen, no long storage — just honest, wholesome produce from farm to table.</p>
+        </div>
+
+        <!-- Nutrition -->
+        <div class="tab-pane fade" id="tab-nutrition">
+          <div class="row g-3 mb-3">
+            {% for val, lbl in [('62','Calories'),('3.2g','Protein'),('3.5g','Fat'),('4.8g','Carbs')] %}
+            <div class="col-6 col-md-3">
+              <div class="text-center p-3 bg-light rounded-3 border">
+                <div class="fw-bold fs-4" style="color:#0B7D2A;">{{ val }}</div>
+                <small class="text-muted fw-semibold text-uppercase" style="font-size:10px;">{{ lbl }}</small>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <small class="text-muted">* Values are per 100ml / 100g serving.</small>
+        </div>
+
+        <!-- Reviews -->
+        <div class="tab-pane fade" id="tab-reviews">
+
+          {% if reviews %}
+          <div class="d-flex flex-wrap gap-4 align-items-center p-3 bg-light rounded-3 border mb-4">
+            <div class="text-center">
+              <div class="fw-bold" style="font-size:2.5rem; color:#0B7D2A; line-height:1;">{{ avg_rating }}</div>
+              <small class="text-muted">out of 5</small><br>
+              <small class="text-muted">{{ reviews|length }} reviews</small>
+            </div>
+            <div class="flex-grow-1" style="min-width:160px;">
+              {% for star in [5,4,3,2,1] %}
+                {% set cnt = reviews|selectattr('rating','eq',star)|list|length %}
+                {% set pct = ((cnt/reviews|length)*100)|int %}
+                <div class="d-flex align-items-center gap-2 mb-1" style="font-size:12px;">
+                  <span class="fw-semibold" style="min-width:16px;">{{ star }}★</span>
+                  <div class="progress flex-grow-1" style="height:6px;">
+                    <div class="progress-bar bg-warning" style="width:{{ pct }}%;"></div>
+                  </div>
+                  <span class="text-muted" style="min-width:14px; text-align:right;">{{ cnt }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          {% if current_user.is_authenticated %}
+            {% set already_reviewed = reviews|selectattr('user_id','eq',current_user.id)|list|length > 0 %}
+            {% if not already_reviewed %}
+            <div class="card bg-light border rounded-3 p-3 mb-4">
+              <h6 class="fw-bold mb-3">✍️ Write Your Review</h6>
+              <form action="{{ url_for('views.add_review', product_id=product.id) }}" method="POST">
+                <div class="star-picker mb-3">
+                  {% for val in [5,4,3,2,1] %}
+                    <input type="radio" name="rating" id="s{{ val }}" value="{{ val }}" {% if val==5 %}checked{% endif %}>
+                    <label for="s{{ val }}">★</label>
+                  {% endfor %}
+                </div>
+                <textarea name="comment" class="form-control mb-3" placeholder="Share your experience..." rows="3" style="border-radius:8px; font-size:14px;"></textarea>
+                <button type="submit" class="btn btn-success px-4" style="border-radius:8px; font-weight:600;">Submit Review</button>
+              </form>
+            </div>
+            {% else %}
+            <div class="alert alert-success border-0 rounded-3 mb-4" style="font-size:13px;">✅ You have already reviewed this product. Thank you 🙏</div>
+            {% endif %}
+          {% else %}
+          <div class="alert alert-light border text-center rounded-3 mb-4" style="font-size:13px;">
+            To give a review <a href="{{ url_for('views.home') }}" class="text-success fw-bold text-decoration-none">Login</a>
+          </div>
+          {% endif %}
+
+          {% if reviews %}
+          <h6 class="fw-bold mb-3">Customer Reviews</h6>
+          <div class="d-flex flex-column gap-3">
+            {% for r in reviews %}
+            <div class="card bg-light border rounded-3 p-3">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="review-avatar">{{ r.user.name[0].upper() }}</div>
+                <div class="flex-grow-1">
+                  <div class="fw-bold" style="font-size:13px;">{{ r.user.name }}</div>
+                  <div class="text-muted" style="font-size:11px;">{{ r.created_at.strftime('%d %b %Y') }}</div>
+                </div>
+                <span style="color:#f59e0b; font-size:13px;">
+                  {% for i in range(r.rating) %}★{% endfor %}{% for i in range(5-r.rating) %}☆{% endfor %}
+                </span>
+              </div>
+              {% if r.comment %}<p class="text-muted mb-0" style="font-size:13px; line-height:1.6;">{{ r.comment }}</p>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center p-4 text-muted border rounded-3" style="border-style:dashed!important;">
+            <div style="font-size:28px;">💬</div>
+            <p class="mb-0 mt-2">No reviews yet. Be the first to review!</p>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Similar Products ── -->
+  {% if similar_products %}
+  <div class="mb-4">
+    <h5 class="fw-bold mb-3" style="color:#0B7D2A;">🌿 Similar Products</h5>
+    <div class="row row-cols-2 row-cols-md-4 g-3">
+      {% for p in similar_products %}
+      <div class="col">
+        <div class="card similar-card border shadow-sm h-100">
+          <img src="{{ p.image }}" alt="{{ p.name }}">
+          <div class="card-body p-3">
+            <h6 class="fw-semibold text-truncate mb-1" style="font-size:13px;">{{ p.name }}</h6>
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fw-bold" style="color:#0B7D2A; font-size:1.1rem;">₹{{ "%.0f"|format(p.price) }} / kg</span>
+              {% if p.stock > 0 %}
+                <span class="badge text-bg-success" style="font-size:10px;">In Stock</span>
+              {% else %}
+                <span class="badge text-bg-danger" style="font-size:10px;">Out of Stock</span>
+              {% endif %}
+            </div>
+            <a href="{{ url_for('views.product_detail', product_id=p.id) }}" class="btn btn-success w-100" style="font-size:12px; font-weight:600; border-radius:8px;">View Product</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
 </div>
+
+<script>
+  const maxStock = {{ product.stock or 99 }};
+  function changeQty(delta) {
+    const inp = document.getElementById('qtyDisplay');
+    let v = Math.max(1, Math.min(parseInt(inp.value) + delta, maxStock));
+    inp.value = v;
+    document.getElementById('qtyHidden').value = v;
+  }
+  function syncQty(val) {
+    let v = Math.max(1, Math.min(parseInt(val)||1, maxStock));
+    document.getElementById('qtyDisplay').value = v;
+    document.getElementById('qtyHidden').value  = v;
+  }
+</script>
+
+<script>
+  function updateVariantPrice(select) {
+    const opt = select.options[select.selectedIndex];
+    const priceEl = document.querySelector('[style*="font-size:2rem"]');
+    const btn = document.querySelector('button[type="submit"]');
+    
+    if (opt.value) {
+      priceEl.textContent = '₹' + opt.dataset.price + ' / kg';
+      const stock = parseInt(opt.dataset.stock);
+      if (stock <= 0) {
+        btn.disabled = true;
+        btn.textContent = 'Out of Stock';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cart-plus me-2"></i>Add to Cart';
+      }
+    } else {
+      priceEl.textContent = '₹{{ "%.0f"|format(product.price) }} / kg';
+      btn.disabled = {{ 'false' if product.stock > 0 else 'true' }};
+      btn.innerHTML = '<i class="bi bi-cart-plus me-2"></i>Add to Cart';
+    }
+  }
+</script>
+
 {% endblock %}

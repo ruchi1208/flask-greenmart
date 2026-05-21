@@ -10,8 +10,8 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <style>
     /* ===== OTP BOXES ===== */
     .otp-inputs {
@@ -46,7 +46,6 @@
       75%      { transform: translateX(5px); }
     }
 
-    /* OTP email chip */
     .otp-email-chip {
       display: inline-block;
       background: #f0fdf6;
@@ -59,12 +58,10 @@
       margin-bottom: 4px;
     }
 
-    /* Timer */
     .otp-timer { font-size: 13px; color: #888; }
     .otp-timer .time { font-weight: 700; color: #2d6a4f; }
     .otp-timer .time.expired { color: #dc3545; }
 
-    /* Resend */
     .resend-link {
       background: none; border: none;
       color: #2d6a4f; font-weight: 600;
@@ -73,11 +70,9 @@
     }
     .resend-link:disabled { color: #aaa; cursor: not-allowed; text-decoration: none; }
 
-    /* Step indicator */
     .modal-step { display: none; }
     .modal-step.active { display: block; }
 
-    /* Back button */
     .otp-back-btn {
       background: none; border: none;
       color: #888; font-size: 13px;
@@ -123,19 +118,29 @@
       </span>
     </div>
     {% if current_user.is_authenticated %}
-    <div class="dropdown">
-      <a class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" data-bs-toggle="dropdown">
-        <i class="fa-solid fa-user fs-5"></i>
-        <span class="ms-2 fw-bold" style="color:white;">{{ current_user.name }}</span>
-      </a>
-      <ul class="dropdown-menu dropdown-menu-end">
-        <li><a class="dropdown-item" href="{{ url_for('views.profile') }}">Profile</a></li>
-        <li><a class="dropdown-item" href="{{ url_for('views.logout') }}">Logout</a></li>
-      </ul>
-    </div>
-    {% else %}
-      <i class="fa-solid fa-user fs-5" data-bs-toggle="modal" data-bs-target="#loginModal"></i>
-    {% endif %}
+<div class="dropdown">
+  <a href="#"
+     class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle"
+     id="userDropdown"
+     data-bs-toggle="dropdown"
+     aria-expanded="false"
+     role="button">
+    <i class="fa-solid fa-user fs-5" style="color:white;"></i>
+    <span class="ms-2 fw-bold" style="color:white;">{{ current_user.name }}</span>
+  </a>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+    <li><a class="dropdown-item" href="{{ url_for('views.profile') }}">
+      <i class="fa-solid fa-user me-2"></i>Profile
+    </a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item text-danger" href="{{ url_for('views.logout') }}">
+      <i class="fa-solid fa-right-from-bracket me-2"></i>Logout
+    </a></li>
+  </ul>
+</div>
+{% else %}
+  <i class="fa-solid fa-user fs-5" data-bs-toggle="modal" data-bs-target="#loginModal" style="cursor:pointer;"></i>
+{% endif %}
   </div>
 </header>
 
@@ -156,6 +161,15 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="mainNavbar">
+        <div class="d-lg-none mt-2 w-100 position-relative">
+          <form class="search-box d-flex" action="{{ url_for('views.search') }}" method="get">
+            <input type="text" name="q" id="liveSearchMobile" class="form-control"
+                   placeholder="Search products..." autocomplete="off">
+            <button type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+          </form>
+          <div id="searchResultsMobile" class="list-group position-absolute w-100"
+               style="z-index:1000; display:none;"></div>
+        </div>
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item"><a class="nav-link" href="{{ url_for('views.home') }}">Home</a></li>
           <li class="nav-item"><a class="nav-link" href="{{ url_for('views.best_deals') }}">Best Deals</a></li>
@@ -178,12 +192,8 @@
         <h5 class="modal-title" id="loginModalTitle">Login or Sign Up</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-
       <div class="modal-body">
-
-        <!-- ── STEP 1: Login + Signup tabs ── -->
         <div class="modal-step active" id="step-auth">
-
           <ul class="nav nav-tabs" id="authTab">
             <li class="nav-item">
               <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#login">Login</button>
@@ -194,7 +204,6 @@
           </ul>
 
           <div class="tab-content pt-3">
-
             <!-- Login -->
             <div class="tab-pane fade show active" id="login">
               <form method="POST" action="{{ url_for('auth.login') }}">
@@ -216,7 +225,6 @@
 
             <!-- Signup -->
             <div class="tab-pane fade" id="signup">
-              <!-- STEP 1: Signup Fields -->
               <div id="signupFields">
                 <div class="mb-3">
                   {{ signup_form.name.label(class="form-label") }}
@@ -240,7 +248,6 @@
                 <div id="signupError" class="text-danger mt-2" style="font-size:13px;"></div>
               </div>
 
-              <!-- STEP 2: OTP Verify (same tab, hidden initially) -->
               <div id="signupOtpStep" style="display:none;">
                 <button class="otp-back-btn" onclick="backToSignup()">← Back</button>
                 <div class="text-center mb-2">
@@ -249,7 +256,6 @@
                   <div style="font-size:13px;color:#888;margin-top:4px;">OTP moklayo che</div>
                   <div class="otp-email-chip mt-2" id="signupOtpEmail">—</div>
                 </div>
-
                 <div class="otp-inputs" id="signupOtpInputs">
                   <input type="text" class="otp-box" maxlength="1" inputmode="numeric">
                   <input type="text" class="otp-box" maxlength="1" inputmode="numeric">
@@ -258,28 +264,23 @@
                   <input type="text" class="otp-box" maxlength="1" inputmode="numeric">
                   <input type="text" class="otp-box" maxlength="1" inputmode="numeric">
                 </div>
-
                 <div class="text-center mb-3">
                   <div class="otp-timer">
                     Expire thase: <span class="time" id="signupTimerDisplay">10:00</span>
                   </div>
                 </div>
-
                 <button type="button" class="btn btn-success w-100" id="signupVerifyBtn"
                         onclick="verifySignupOtp()" disabled>
                   Verify & Create Account
                 </button>
-
                 <div class="text-center mt-2">
                   <button class="resend-link" id="signupResendBtn" onclick="resendSignupOtp()" disabled>
                     Resend OTP
                   </button>
                   <span style="font-size:12px;color:#aaa;" id="signupResendTimer"></span>
                 </div>
-
                 <div id="signupOtpError" class="text-danger mt-2 text-center" style="font-size:13px;"></div>
               </div>
-
             </div>
           </div>
 
@@ -288,7 +289,6 @@
             <i class="fab fa-google me-2"></i> Login with Google
           </a>
         </div>
-
       </div>
     </div>
   </div>
@@ -304,8 +304,6 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-
-        <!-- Step 1: Email + New Password -->
         <div id="forgotStep1">
           <form id="resetPasswordForm">
             <input type="email" name="email" class="form-control mb-2" placeholder="Enter Your Email" required>
@@ -314,7 +312,6 @@
           </form>
         </div>
 
-        <!-- Step 2: OTP Verify -->
         <div id="forgotStep2" style="display:none;">
           <button class="otp-back-btn" onclick="backToForgot()">← Back</button>
           <div class="text-center mb-2">
@@ -323,7 +320,6 @@
             <div style="font-size:13px;color:#888;margin-top:4px;">OTP moklayo che</div>
             <div class="otp-email-chip mt-2" id="forgotOtpEmail">—</div>
           </div>
-
           <div class="otp-inputs" id="forgotOtpInputs">
             <input type="text" class="otp-box" maxlength="1" inputmode="numeric">
             <input type="text" class="otp-box" maxlength="1" inputmode="numeric">
@@ -332,34 +328,80 @@
             <input type="text" class="otp-box" maxlength="1" inputmode="numeric">
             <input type="text" class="otp-box" maxlength="1" inputmode="numeric">
           </div>
-
           <div class="text-center mb-3">
             <div class="otp-timer">
               Expire thase: <span class="time" id="forgotTimerDisplay">10:00</span>
             </div>
           </div>
-
           <button type="button" class="btn btn-success w-100" id="forgotVerifyBtn"
                   onclick="verifyForgotOtp()" disabled>
             Verify & Reset Password
           </button>
-
           <div class="text-center mt-2">
             <button class="resend-link" id="forgotResendBtn" onclick="resendForgotOtp()" disabled>
               Resend OTP
             </button>
             <span style="font-size:12px;color:#aaa;" id="forgotResendTimer"></span>
           </div>
-
           <div id="forgotOtpError" class="text-danger mt-2 text-center" style="font-size:13px;"></div>
         </div>
-
       </div>
     </div>
   </div>
 </div>
 
 
+<!-- ===== SHARE MODAL ===== -->
+<div id="shareModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5);
+     z-index:9999; align-items:center; justify-content:center;" onclick="closeShare(event)">
+  <div style="background:white; border-radius:20px; padding:28px; width:90%; max-width:380px;
+              box-shadow:0 20px 60px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <h3 style="font-size:16px; font-weight:700; color:#111;">🌿 Share This Product</h3>
+      <button onclick="document.getElementById('shareModal').style.display='none'"
+              style="background:none; border:none; font-size:20px; cursor:pointer; color:#999;">✕</button>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;">
+      <a id="shareWA" href="#" target="_blank"
+         style="display:flex; align-items:center; gap:8px; padding:12px 16px;
+                background:#25D366; color:white; border-radius:12px; text-decoration:none;
+                font-size:13px; font-weight:700;">
+        <i class="bi bi-whatsapp"></i> WhatsApp
+      </a>
+      <a id="shareFB" href="#" target="_blank"
+         style="display:flex; align-items:center; gap:8px; padding:12px 16px;
+                background:#1877F2; color:white; border-radius:12px; text-decoration:none;
+                font-size:13px; font-weight:700;">
+        <i class="bi bi-facebook"></i> Facebook
+      </a>
+      <a id="shareTW" href="#" target="_blank"
+         style="display:flex; align-items:center; gap:8px; padding:12px 16px;
+                background:#1DA1F2; color:white; border-radius:12px; text-decoration:none;
+                font-size:13px; font-weight:700;">
+        <i class="bi bi-twitter-x"></i> Twitter
+      </a>
+      <a id="shareTG" href="#" target="_blank"
+         style="display:flex; align-items:center; gap:8px; padding:12px 16px;
+                background:#229ED9; color:white; border-radius:12px; text-decoration:none;
+                font-size:13px; font-weight:700;">
+        <i class="bi bi-telegram"></i> Telegram
+      </a>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <input id="shareUrl" type="text" readonly
+             style="flex:1; border:1.5px solid #e2ece6; border-radius:10px;
+                    padding:10px 12px; font-size:12px; color:#555; outline:none;">
+      <button id="copyBtn" onclick="copyShareLink()"
+              style="background:#0a3d1f; color:white; border:none; border-radius:10px;
+                     padding:10px 14px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+        📋 Copy
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== FLASH MESSAGES ===== -->
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
 {% for category, message in messages %}
@@ -370,54 +412,128 @@
 
 {% block content %}{% endblock %}
 
-<footer class="text-dark py-5" style="background-color: #13be1e50;">
-  <div class="container">
-    <div class="row g-4">
-      <div class="col-12 col-md-3">
-        <h5 class="fw-bold">Welcome</h5>
-        <p>Your one-stop destination for fresh groceries, organic products, and daily essentials.
-          We bring quality at affordable prices. Shop smart, live healthy — only at Green Mart!</p>
+
+<!-- ===== FOOTER ===== -->
+<footer style="background:#0d2e14; font-family:'Outfit',sans-serif; color:#c8dfc2; padding:0;">
+
+  <!-- Top Strip -->
+  <div style="background:#1a4a22; padding:12px 40px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.06);">
+    <span style="font-size:13px; color:#7dba82;">🌿 100% Organic & Fresh Products — Delivered to Your Door</span>
+    <span style="background:#2e7d32; color:#a5d6a7; font-size:11px; padding:3px 10px; border-radius:20px; font-weight:600;">EST. 2024</span>
+  </div>
+
+  <!-- Main Grid -->
+  <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1.2fr; gap:40px; padding:52px 40px 40px;">
+
+    <!-- Brand -->
+    <div>
+      <div style="font-family:'DM Serif Display',serif; font-size:28px; color:#fff; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+        <span style="width:26px;height:26px;background:#4caf50;border-radius:50% 0 50% 0;display:inline-block;"></span> GreenMart
       </div>
-      <div class="col-12 col-md-3">
-        <h5 class="fw-bold mb-3">Connect With Us</h5>
-        <a href="#" class="text-dark fs-4 me-3"><i class="fa-brands fa-facebook"></i></a>
-        <a href="#" class="text-dark fs-4 me-3"><i class="fa-brands fa-square-instagram"></i></a>
-        <a href="#" class="text-dark fs-4 me-3"><i class="fa-brands fa-square-twitter"></i></a>
-        <a href="#" class="text-dark fs-4"><i class="fa-brands fa-square-whatsapp"></i></a>
+      <p style="font-size:13.5px; color:#7dba82; line-height:1.75; margin-bottom:22px; font-weight:300; max-width:240px;">
+        Your one-stop destination for fresh groceries, organic produce, and daily essentials. Quality at affordable prices.
+      </p>
+      <div style="display:flex; gap:10px;">
+        <a href="#" style="width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:#7dba82;font-size:18px;text-decoration:none;"><i class="fa-brands fa-facebook"></i></a>
+        <a href="#" style="width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:#7dba82;font-size:18px;text-decoration:none;"><i class="fa-brands fa-square-instagram"></i></a>
+        <a href="#" style="width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:#7dba82;font-size:18px;text-decoration:none;"><i class="fa-brands fa-square-twitter"></i></a>
+        <a href="#" style="width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:#7dba82;font-size:18px;text-decoration:none;"><i class="fa-brands fa-square-whatsapp"></i></a>
       </div>
-      <div class="col-12 col-md-3">
-        <h5 class="fw-bold mb-3">Useful Links</h5>
-        <ul class="list-unstyled">
-          <li><a href="" class="text-dark text-decoration-none">Home</a></li>
-          <li><a href="" class="text-dark text-decoration-none">Shop</a></li>
-          <li><a href="" class="text-dark text-decoration-none">About</a></li>
-          <li><a href="" class="text-dark text-decoration-none">Contact</a></li>
-        </ul>
+    </div>
+
+    <!-- Quick Links -->
+    <div>
+      <div style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#fff;font-weight:600;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #4caf50;display:inline-block;">Quick Links</div>
+      <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:10px;">
+        <li><a href="{{ url_for('views.home') }}"        style="color:#7dba82;text-decoration:none;font-size:13.5px;font-weight:300;">→ Home</a></li>
+        <li><a href="{{ url_for('views.shop') }}"        style="color:#7dba82;text-decoration:none;font-size:13.5px;font-weight:300;">→ Shop</a></li>
+        <li><a href="{{ url_for('views.best_deals') }}"  style="color:#7dba82;text-decoration:none;font-size:13.5px;font-weight:300;">→ Best Deals</a></li>
+        <li><a href="{{ url_for('views.about') }}"       style="color:#7dba82;text-decoration:none;font-size:13.5px;font-weight:300;">→ About Us</a></li>
+        <li><a href="{{ url_for('views.contact') }}"     style="color:#7dba82;text-decoration:none;font-size:13.5px;font-weight:300;">→ Contact</a></li>
+      </ul>
+    </div>
+
+    <!-- Categories -->
+    <div>
+      <div style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#fff;font-weight:600;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #4caf50;display:inline-block;">Categories</div>
+      <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:10px;">
+        <li><a href="#"                                           style="color:#7dba82;text-decoration:none;font-size:13.5px;font-weight:300;">→ Fruits & Vegetables</a></li>
+        <li><a href="{{ url_for('views.dairy_beverages') }}"     style="color:#7dba82;text-decoration:none;font-size:13.5px;font-weight:300;">→ Dairy & Beverages</a></li>
+        <li><a href="{{ url_for('views.grains_nuts') }}"         style="color:#7dba82;text-decoration:none;font-size:13.5px;font-weight:300;">→ Grains & Nuts</a></li>
+        <li><a href="{{ url_for('views.spices_snacks') }}"       style="color:#7dba82;text-decoration:none;font-size:13.5px;font-weight:300;">→ Spices & Snacks</a></li>
+      </ul>
+    </div>
+
+    <!-- Contact + Newsletter -->
+    <div>
+      <div style="font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#fff;font-weight:600;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #4caf50;display:inline-block;">Get in Touch</div>
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+        <div style="width:34px;height:34px;background:rgba(46,125,50,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📍</div>
+        <div style="font-size:13px;color:#7dba82;line-height:1.5;font-weight:300;">GreenMart, Sardar Patel Ring Rd,<br>Ahmedabad, Gujarat 380015</div>
       </div>
-      <div class="col-12 col-md-3">
-        <h5 class="fw-bold mb-3">Contact Details</h5>
-        <ul class="list-unstyled">
-          <li class="mb-2"><i class="fa-solid fa-location-dot me-2"></i>Green Mart Superstore, Ahmedabad, Gujarat</li>
-          <li class="mb-2"><i class="fa-solid fa-envelope me-2"></i>support@greenmart.com</li>
-          <li><i class="fa-solid fa-clock me-2"></i>Mon–Sun, 8:00 AM – 10:00 PM</li>
-        </ul>
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;">
+        <div style="width:34px;height:34px;background:rgba(46,125,50,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">📞</div>
+        <div style="font-size:13px;color:#7dba82;line-height:1.5;font-weight:300;">+1800 090 098<br>Mon–Sat, 9am–6pm</div>
+      </div>
+
+      <!-- ✅ Newsletter — HTML only, script is at bottom of page -->
+      <div style="background:rgba(46,125,50,0.1);border:1px solid rgba(46,125,50,0.2);border-radius:12px;padding:16px;">
+        <p style="font-size:13px;color:#7dba82;margin-bottom:10px;font-weight:300;">Subscribe for offers & fresh arrivals:</p>
+        <div style="display:flex;gap:8px;">
+          <input type="email" id="newsletterEmail" placeholder="your@email.com"
+                 style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+                        border-radius:8px;padding:9px 12px;font-size:13px;color:white;outline:none;">
+          <button onclick="subscribeNewsletter()" id="subBtn"
+                  style="background:#2e7d32;border:none;border-radius:8px;padding:9px 14px;
+                         color:white;font-size:13px;font-weight:600;cursor:pointer;">Go</button>
+        </div>
+        <div id="subMsg" style="font-size:12px;margin-top:8px;min-height:16px;"></div>
       </div>
     </div>
   </div>
+
+  <hr style="border:none;border-top:1px solid rgba(255,255,255,0.06);margin:0 40px;">
+
+  <!-- Bottom Bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 40px;flex-wrap:wrap;gap:12px;">
+    <div style="font-size:12.5px;color:#4a7a52;font-weight:300;">© 2026 <span style="color:#7dba82;">GreenMart</span> · All rights reserved</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span style="font-size:11px;color:#4a7a52;margin-right:4px;">We accept</span>
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:4px 10px;font-size:11px;color:#7dba82;font-weight:600;">UPI</span>
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:4px 10px;font-size:11px;color:#7dba82;font-weight:600;">COD</span>
+      <span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:4px 10px;font-size:11px;color:#7dba82;font-weight:600;">Cards</span>
+    </div>
+  </div>
+
 </footer>
 
+
+<!-- ===== SCRIPTS ===== -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+
+
 <!-- Flash Messages -->
+ <!-- Dropdown Manual Init -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  // Bootstrap 5 dropdown manual initialize
+  var dropdownElements = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+  dropdownElements.forEach(function (el) {
+    new bootstrap.Dropdown(el);
+  });
+});
+</script>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const flash = document.querySelector(".flash-data");
   if (flash) {
     const message  = flash.dataset.message;
     const category = flash.dataset.category;
-    let icon  = "info", title = "Message";
+    let icon = "info", title = "Message";
     if (category === "success") { icon = "success"; title = "Success"; }
     else if (category === "danger") { icon = "error"; title = "Error"; }
     Swal.fire({ icon, title, text: message, timer: 2000, showConfirmButton: false });
@@ -425,32 +541,289 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<!-- Live Search -->
+<!-- Newsletter Subscribe -->
+<script>
+function subscribeNewsletter() {
+  const email = document.getElementById('newsletterEmail').value.trim();
+  const btn   = document.getElementById('subBtn');
+  const msg   = document.getElementById('subMsg');
+  if (!email) { msg.style.color='#ff8a80'; msg.textContent='Email દાખલ કરો!'; return; }
+  btn.textContent = '...'; btn.disabled = true;
+  const form = new FormData();
+  form.append('email', email);
+  fetch('/newsletter/subscribe', { method:'POST', body:form })
+    .then(r => r.json())
+    .then(data => {
+      msg.style.color = data.success ? '#a5d6a7' : '#ff8a80';
+      msg.textContent = data.message;
+      if (data.success) { document.getElementById('newsletterEmail').value=''; btn.textContent='✓'; }
+      else { btn.textContent='Go'; btn.disabled=false; }
+    })
+    .catch(() => { msg.style.color='#ff8a80'; msg.textContent='Network error!'; btn.textContent='Go'; btn.disabled=false; });
+}
+</script>
+
+<!-- ===== LIVE SEARCH — DESKTOP (FINAL) ===== -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const input   = document.getElementById("liveSearch");
   const results = document.getElementById("searchResults");
   if (!input || !results) return;
+
+  /* Scrollbar style */
+  const s = document.createElement("style");
+  s.textContent = `
+    #searchResults { scrollbar-width:thin; scrollbar-color:#c8e6c9 transparent; }
+    #searchResults::-webkit-scrollbar { width:4px; }
+    #searchResults::-webkit-scrollbar-thumb { background:#c8e6c9; border-radius:10px; }
+    @keyframes gmShimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .gm-skeleton { background:linear-gradient(90deg,#f0f7f0 25%,#e0f0e0 50%,#f0f7f0 75%);
+                   background-size:200% 100%; animation:gmShimmer 1.2s infinite; border-radius:8px; }
+  `;
+  document.head.appendChild(s);
+
+  Object.assign(results.style, {
+    position:"absolute", top:"calc(100% + 10px)", left:"0",
+    width:"100%", zIndex:"9999", display:"none",
+    background:"#ffffff", borderRadius:"22px",
+    border:"1.5px solid #d4edda",
+    boxShadow:"0 20px 60px rgba(11,90,40,0.18)",
+    overflow:"hidden", padding:"10px",
+    maxHeight:"500px", overflowY:"auto",
+    fontFamily:"'Outfit',sans-serif",
+  });
+
+  let debounceTimer;
+
   input.addEventListener("keyup", function () {
+    clearTimeout(debounceTimer);
     const q = this.value.trim();
-    if (!q) { results.style.display = "none"; return; }
-    fetch(`/search?q=${q}`)
+    if (!q) { results.style.display="none"; return; }
+
+    /* Shimmer skeleton while loading */
+    results.innerHTML = `
+      <div style="padding:12px 8px;">
+        ${[1,2,3].map(()=>`
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="gm-skeleton" style="width:52px;height:52px;flex-shrink:0;border-radius:13px;"></div>
+            <div style="flex:1;">
+              <div class="gm-skeleton" style="height:12px;width:65%;margin-bottom:8px;"></div>
+              <div class="gm-skeleton" style="height:10px;width:35%;"></div>
+            </div>
+          </div>`).join("")}
+      </div>`;
+    results.style.display = "block";
+
+    debounceTimer = setTimeout(() => {
+      fetch(`/search?q=${encodeURIComponent(q)}`, {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      })
       .then(res => res.json())
       .then(data => {
         results.innerHTML = "";
+
+        /* Empty state */
         if (data.length === 0) {
-          results.innerHTML = `<div class="list-group-item text-muted">No products found</div>`;
-        } else {
-          data.forEach(p => {
-            results.innerHTML += `
-              <a href="/product/${p.id}" class="list-group-item list-group-item-action d-flex align-items-center">
-                <img src="/static/${p.image}" width="40" class="me-2 rounded">
-                <div><strong>${p.name}</strong><br><small>₹ ${p.price}</small></div>
-              </a>`;
-          });
+          results.innerHTML = `
+            <div style="text-align:center;padding:32px 16px;">
+              <div style="font-size:48px;margin-bottom:10px;opacity:0.5;">🥦</div>
+              <div style="font-weight:700;font-size:15px;color:#222;">No results found</div>
+              <div style="font-size:12px;color:#bbb;margin-top:5px;">
+                "<strong>${q}</strong>" mate koi product na malyo
+              </div>
+            </div>`;
+          return;
         }
+
+        /* Header */
+        results.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;
+                      padding:4px 10px 10px;border-bottom:1.5px solid #f0f9f0;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="width:7px;height:7px;border-radius:50%;background:#2d6a4f;
+                           display:inline-block;box-shadow:0 0 0 2px #d4edda;"></span>
+              <span style="font-size:11px;font-weight:700;color:#2d6a4f;
+                           text-transform:uppercase;letter-spacing:0.08em;">
+                ${data.length} result${data.length>1?"s":""} found
+              </span>
+            </div>
+            <span style="font-size:11px;color:#bbb;font-style:italic;">for "${q}"</span>
+          </div>`;
+
+        /* Items */
+        data.forEach(p => {
+          let badge, badgeBg, badgeColor, badgeIcon;
+          if (p.stock <= 0) {
+            badge="Out of Stock"; badgeBg="#fee2e2"; badgeColor="#dc2626"; badgeIcon="✕";
+          } else if (p.stock <= 5) {
+            badge=`Only ${p.stock} left`; badgeBg="#fef9c3"; badgeColor="#b45309"; badgeIcon="⚡";
+          } else {
+            badge="In Stock"; badgeBg="#dcfce7"; badgeColor="#15803d"; badgeIcon="✓";
+          }
+
+          results.innerHTML += `
+            <a href="/product/${p.id}"
+               style="display:flex;align-items:center;gap:12px;padding:10px;
+                      border-radius:16px;text-decoration:none;margin-bottom:4px;
+                      background:transparent;transition:background 0.15s;"
+               onmouseover="this.style.background='#f0fdf4';this.querySelector('.gm-arrow').style.transform='translateX(4px)'"
+               onmouseout="this.style.background='transparent';this.querySelector('.gm-arrow').style.transform='translateX(0)'">
+
+              <!-- Thumbnail + dot -->
+              <div style="position:relative;width:54px;height:54px;flex-shrink:0;">
+                <div style="width:54px;height:54px;border-radius:13px;overflow:hidden;
+                            border:1.5px solid #d4edda;background:#f4fbf4;">
+                  <img src="${p.image}" style="width:100%;height:100%;object-fit:cover;"
+                       onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\'font-size:22px;text-align:center;line-height:54px;\'>🛒</div>'">
+                </div>
+                <div style="position:absolute;bottom:-3px;right:-3px;width:17px;height:17px;
+                            border-radius:50%;background:${badgeBg};border:2px solid white;
+                            display:flex;align-items:center;justify-content:center;
+                            font-size:8px;color:${badgeColor};font-weight:900;">${badgeIcon}</div>
+              </div>
+
+              <!-- Info -->
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13.5px;font-weight:600;color:#111;
+                            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+                            margin-bottom:5px;">${p.name}</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:15px;font-weight:800;color:#1a4a22;
+                               font-family:'DM Serif Display',serif;">₹${p.price}</span>
+                  <span style="font-size:10px;font-weight:700;padding:2px 8px;
+                               border-radius:20px;background:${badgeBg};color:${badgeColor};">
+                    ${badge}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Arrow -->
+              <div class="gm-arrow" style="color:#c8dcc8;font-size:20px;flex-shrink:0;
+                                           transition:transform 0.18s;">›</div>
+            </a>`;
+        });
+
+        /* Footer CTA */
+        results.innerHTML += `
+          <div style="margin-top:8px;padding-top:8px;border-top:1.5px solid #f0f9f0;">
+            <a href="/search?q=${encodeURIComponent(q)}"
+               style="display:flex;align-items:center;justify-content:center;gap:8px;
+                      padding:11px 16px;border-radius:14px;text-decoration:none;
+                      background:linear-gradient(135deg,#1a4a22 0%,#2d6a4f 100%);
+                      color:white;font-size:13px;font-weight:700;
+                      box-shadow:0 4px 16px rgba(26,74,34,0.25);"
+               onmouseover="this.style.opacity='0.88'"
+               onmouseout="this.style.opacity='1'">
+              🔍 View all results for "<em>${q}</em>" →
+            </a>
+          </div>`;
+      })
+      .catch(() => {
+        results.innerHTML = `
+          <div style="text-align:center;padding:24px;color:#dc2626;font-size:13px;">
+            ⚠️ Search error. Please try again.
+          </div>`;
+      });
+    }, 280);
+  });
+
+  /* Close on outside click or Escape */
+  document.addEventListener("click", e => {
+    if (!input.contains(e.target) && !results.contains(e.target))
+      results.style.display = "none";
+  });
+  input.addEventListener("keydown", e => {
+    if (e.key === "Escape") results.style.display = "none";
+  });
+});
+</script>
+
+<!-- ===== LIVE SEARCH — MOBILE (FINAL) ===== -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const input   = document.getElementById("liveSearchMobile");
+  const results = document.getElementById("searchResultsMobile");
+  if (!input || !results) return;
+
+  Object.assign(results.style, {
+    position:"absolute", top:"calc(100% + 8px)", left:"0",
+    width:"100%", zIndex:"9999", display:"none",
+    background:"#ffffff", borderRadius:"16px",
+    border:"1.5px solid #d4edda",
+    boxShadow:"0 12px 40px rgba(11,90,40,0.15)",
+    overflow:"hidden", padding:"8px",
+    maxHeight:"380px", overflowY:"auto",
+    fontFamily:"'Outfit',sans-serif",
+  });
+
+  let debounceTimer;
+  input.addEventListener("keyup", function () {
+    clearTimeout(debounceTimer);
+    const q = this.value.trim();
+    if (!q) { results.style.display="none"; return; }
+
+    debounceTimer = setTimeout(() => {
+      fetch(`/search?q=${encodeURIComponent(q)}`, {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      })
+      .then(res => res.json())
+      .then(data => {
+        results.innerHTML = "";
+
+        if (data.length === 0) {
+          results.innerHTML = `
+            <div style="text-align:center;padding:20px;font-size:13px;color:#999;">
+              <div style="font-size:32px;margin-bottom:6px;">🥦</div>No products found
+            </div>`;
+          results.style.display = "block";
+          return;
+        }
+
+        data.forEach(p => {
+          let badge, badgeBg, badgeColor;
+          if (p.stock <= 0)      { badge="Out of Stock"; badgeBg="#fee2e2"; badgeColor="#dc2626"; }
+          else if (p.stock <= 5) { badge=`Only ${p.stock} left`; badgeBg="#fef9c3"; badgeColor="#b45309"; }
+          else                   { badge="In Stock"; badgeBg="#dcfce7"; badgeColor="#15803d"; }
+
+          results.innerHTML += `
+            <a href="/product/${p.id}"
+               style="display:flex;align-items:center;gap:10px;padding:9px 8px;
+                      border-radius:12px;text-decoration:none;background:transparent;margin-bottom:3px;"
+               onmouseover="this.style.background='#f0fdf4'"
+               onmouseout="this.style.background='transparent'">
+              <div style="width:44px;height:44px;border-radius:10px;overflow:hidden;
+                          border:1.5px solid #d4edda;flex-shrink:0;background:#f4fbf4;">
+                <img src="${p.image}" style="width:100%;height:100%;object-fit:cover;"
+                     onerror="this.style.display='none';this.parentElement.innerHTML='🛒'">
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:600;color:#111;
+                            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+                  <span style="font-size:13px;font-weight:800;color:#1a4a22;">₹${p.price}</span>
+                  <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;
+                               background:${badgeBg};color:${badgeColor};">${badge}</span>
+                </div>
+              </div>
+            </a>`;
+        });
+
+        results.innerHTML += `
+          <a href="/search?q=${encodeURIComponent(q)}"
+             style="display:flex;align-items:center;justify-content:center;gap:6px;
+                    margin-top:6px;padding:9px;border-radius:12px;text-decoration:none;
+                    background:linear-gradient(135deg,#1a4a22,#2d6a4f);
+                    color:white;font-size:12px;font-weight:700;">
+            🔍 View all results →
+          </a>`;
         results.style.display = "block";
       });
+    }, 300);
+  });
+
+  document.addEventListener("click", e => {
+    if (!input.contains(e.target) && !results.contains(e.target))
+      results.style.display = "none";
   });
 });
 </script>
@@ -458,19 +831,30 @@ document.addEventListener("DOMContentLoaded", function () {
 <!-- Share Product -->
 <script>
 function shareProduct(name, id) {
-  const productUrl = `${window.location.origin}/product/${id}`;
-  const text = `🛒 Check this product on GreenMart\n\n${name}\n\n${productUrl}`;
-  if (navigator.share) {
-    navigator.share({ title: name, text, url: productUrl });
-  } else {
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-  }
+  const url  = `${window.location.origin}/product/${id}`;
+  const text = `Check out ${name} on GreenMart! 🌿`;
+  if (navigator.share) { navigator.share({ title:name, text:text, url:url }); return; }
+  const modal = document.getElementById('shareModal');
+  modal.style.display = 'flex';
+  document.getElementById('shareUrl').value = url;
+  document.getElementById('shareWA').href = `https://wa.me/?text=${encodeURIComponent(text+' '+url)}`;
+  document.getElementById('shareFB').href = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+  document.getElementById('shareTW').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  document.getElementById('shareTG').href = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+}
+function copyShareLink() {
+  const input = document.getElementById('shareUrl');
+  input.select(); navigator.clipboard.writeText(input.value);
+  document.getElementById('copyBtn').textContent = '✅ Copied!';
+  setTimeout(() => document.getElementById('copyBtn').textContent = '📋 Copy', 2000);
+}
+function closeShare(e) {
+  if (e.target.id === 'shareModal') document.getElementById('shareModal').style.display = 'none';
 }
 </script>
 
-<!-- ===== OTP SYSTEM ===== -->
+<!-- OTP System -->
 <script>
-// ── Generic OTP box setup ─────────────────────────────────────
 function setupOtpBoxes(containerId, onComplete) {
   const boxes = Array.from(document.querySelectorAll(`#${containerId} .otp-box`));
   boxes.forEach((box, i) => {
@@ -478,354 +862,352 @@ function setupOtpBoxes(containerId, onComplete) {
       const val = e.target.value.replace(/[^0-9]/g, '');
       e.target.value = val;
       e.target.classList.toggle('filled', val !== '');
-      if (val && i < boxes.length - 1) boxes[i + 1].focus();
-      const code = boxes.map(b => b.value).join('');
-      onComplete(code);
+      if (val && i < boxes.length - 1) boxes[i+1].focus();
+      onComplete(boxes.map(b => b.value).join(''));
     });
     box.addEventListener('keydown', e => {
       if (e.key === 'Backspace' && !e.target.value && i > 0) {
-        boxes[i - 1].focus();
-        boxes[i - 1].value = '';
-        boxes[i - 1].classList.remove('filled');
-        onComplete('');
+        boxes[i-1].focus(); boxes[i-1].value = '';
+        boxes[i-1].classList.remove('filled'); onComplete('');
       }
     });
     box.addEventListener('paste', e => {
       e.preventDefault();
-      const text = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+      const text = e.clipboardData.getData('text').replace(/[^0-9]/g,'').slice(0,6);
       text.split('').forEach((ch, idx) => {
-        if (boxes[idx]) { boxes[idx].value = ch; boxes[idx].classList.add('filled'); }
+        if (boxes[idx]) { boxes[idx].value=ch; boxes[idx].classList.add('filled'); }
       });
-      const code = boxes.map(b => b.value).join('');
-      onComplete(code);
-      if (text.length === 6) boxes[5].focus();
+      onComplete(boxes.map(b=>b.value).join(''));
+      if (text.length===6) boxes[5].focus();
     });
   });
 }
-
 function getOtpValue(containerId) {
-  return Array.from(document.querySelectorAll(`#${containerId} .otp-box`))
-              .map(b => b.value).join('');
+  return Array.from(document.querySelectorAll(`#${containerId} .otp-box`)).map(b=>b.value).join('');
 }
-
 function clearOtpBoxes(containerId) {
-  document.querySelectorAll(`#${containerId} .otp-box`).forEach(b => {
-    b.value = ''; b.classList.remove('filled', 'error');
-  });
+  document.querySelectorAll(`#${containerId} .otp-box`).forEach(b=>{b.value='';b.classList.remove('filled','error');});
 }
-
 function shakeOtpBoxes(containerId) {
-  document.querySelectorAll(`#${containerId} .otp-box`).forEach(b => {
-    b.classList.add('error');
-    setTimeout(() => b.classList.remove('error'), 500);
+  document.querySelectorAll(`#${containerId} .otp-box`).forEach(b=>{
+    b.classList.add('error'); setTimeout(()=>b.classList.remove('error'),500);
   });
 }
-
-// ── Timer ─────────────────────────────────────────────────────
 function startCountdown(displayId, seconds, onExpire) {
   let t = seconds;
   const el = document.getElementById(displayId);
-  const interval = setInterval(() => {
+  const interval = setInterval(()=>{
     t--;
-    const m = Math.floor(t / 60).toString().padStart(2, '0');
-    const s = (t % 60).toString().padStart(2, '0');
-    if (el) {
-      el.innerText = `${m}:${s}`;
-      if (t <= 60) el.classList.add('expired');
-    }
-    if (t <= 0) { clearInterval(interval); if (onExpire) onExpire(); }
-  }, 1000);
+    const m = Math.floor(t/60).toString().padStart(2,'0');
+    const s = (t%60).toString().padStart(2,'0');
+    if (el) { el.innerText=`${m}:${s}`; if(t<=60) el.classList.add('expired'); }
+    if (t<=0) { clearInterval(interval); if(onExpire) onExpire(); }
+  },1000);
   return interval;
 }
-
 function startResendCooldown(btnId, timerId, seconds) {
   let t = seconds;
-  const btn   = document.getElementById(btnId);
-  const timer = document.getElementById(timerId);
-  if (btn)   btn.disabled = true;
-  if (timer) timer.innerText = `(${t}s)`;
-  const interval = setInterval(() => {
+  const btn=document.getElementById(btnId), timer=document.getElementById(timerId);
+  if(btn) btn.disabled=true;
+  if(timer) timer.innerText=`(${t}s)`;
+  const interval = setInterval(()=>{
     t--;
-    if (timer) timer.innerText = `(${t}s)`;
-    if (t <= 0) {
-      clearInterval(interval);
-      if (btn)   btn.disabled   = false;
-      if (timer) timer.innerText = '';
-    }
-  }, 1000);
+    if(timer) timer.innerText=`(${t}s)`;
+    if(t<=0){ clearInterval(interval); if(btn) btn.disabled=false; if(timer) timer.innerText=''; }
+  },1000);
 }
 
-// ════════════════════════════════════════════════════════════
-// SIGNUP OTP
-// ════════════════════════════════════════════════════════════
 let signupTimerInterval = null;
-
-setupOtpBoxes('signupOtpInputs', code => {
+setupOtpBoxes('signupOtpInputs', code=>{
   document.getElementById('signupVerifyBtn').disabled = code.length < 6;
 });
 
 function sendSignupOtp() {
-  const name     = document.getElementById('su_name').value.trim();
-  const email    = document.getElementById('su_email').value.trim();
-  const password = document.getElementById('su_password').value;
-  const confirm  = document.getElementById('su_confirm').value;
-  const errEl    = document.getElementById('signupError');
-
-  errEl.innerText = '';
-
-  if (!name || !email || !password || !confirm) {
-    errEl.innerText = 'Badha fields bharao!'; return;
-  }
-  if (password !== confirm) {
-    errEl.innerText = 'Passwords match nathi thata!'; return;
-  }
-  if (password.length < 6) {
-    errEl.innerText = 'Password min 6 characters!'; return;
-  }
-
-  const btn = document.querySelector('#signupFields .btn-success');
-  btn.innerText = 'Sending OTP...';
-  btn.disabled  = true;
-
-  fetch('/ajax/send-signup-otp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      // Show OTP step
-      document.getElementById('signupFields').style.display    = 'none';
-      document.getElementById('signupOtpStep').style.display   = 'block';
-      document.getElementById('signupOtpEmail').innerText      = email;
+  const name=document.getElementById('su_name').value.trim();
+  const email=document.getElementById('su_email').value.trim();
+  const password=document.getElementById('su_password').value;
+  const confirm=document.getElementById('su_confirm').value;
+  const errEl=document.getElementById('signupError');
+  errEl.innerText='';
+  if(!name||!email||!password||!confirm){errEl.innerText='Badha fields bharao!';return;}
+  if(password!==confirm){errEl.innerText='Passwords match nathi thata!';return;}
+  if(password.length<6){errEl.innerText='Password min 6 characters!';return;}
+  const btn=document.querySelector('#signupFields .btn-success');
+  btn.innerText='Sending OTP...'; btn.disabled=true;
+  fetch('/ajax/send-signup-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password})})
+  .then(r=>r.json()).then(data=>{
+    if(data.success){
+      document.getElementById('signupFields').style.display='none';
+      document.getElementById('signupOtpStep').style.display='block';
+      document.getElementById('signupOtpEmail').innerText=email;
       clearOtpBoxes('signupOtpInputs');
-
-      // Start timers
-      if (signupTimerInterval) clearInterval(signupTimerInterval);
+      if(signupTimerInterval) clearInterval(signupTimerInterval);
       document.getElementById('signupTimerDisplay').classList.remove('expired');
-      signupTimerInterval = startCountdown('signupTimerDisplay', 600, () => {
-        document.getElementById('signupVerifyBtn').disabled = true;
-        document.getElementById('signupResendBtn').disabled = false;
+      signupTimerInterval=startCountdown('signupTimerDisplay',600,()=>{
+        document.getElementById('signupVerifyBtn').disabled=true;
+        document.getElementById('signupResendBtn').disabled=false;
       });
-      startResendCooldown('signupResendBtn', 'signupResendTimer', 30);
-
-      setTimeout(() => {
-        document.querySelector('#signupOtpInputs .otp-box').focus();
-      }, 100);
-    } else {
-      errEl.innerText = data.message;
-      btn.innerText = 'Sign Up →';
-      btn.disabled  = false;
-    }
-  })
-  .catch(() => {
-    errEl.innerText = 'Network error!';
-    btn.innerText = 'Sign Up →';
-    btn.disabled  = false;
-  });
+      startResendCooldown('signupResendBtn','signupResendTimer',30);
+      setTimeout(()=>document.querySelector('#signupOtpInputs .otp-box').focus(),100);
+    } else { errEl.innerText=data.message; btn.innerText='Sign Up →'; btn.disabled=false; }
+  }).catch(()=>{errEl.innerText='Network error!';btn.innerText='Sign Up →';btn.disabled=false;});
 }
-
 function verifySignupOtp() {
-  const code  = getOtpValue('signupOtpInputs');
-  const errEl = document.getElementById('signupOtpError');
-  const btn   = document.getElementById('signupVerifyBtn');
-
-  if (code.length < 6) return;
-
-  errEl.innerText  = '';
-  btn.innerText    = 'Verifying...';
-  btn.disabled     = true;
-
-  fetch('/ajax/verify-otp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, purpose: 'signup' })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      if (signupTimerInterval) clearInterval(signupTimerInterval);
-      // Close modal + show success
+  const code=getOtpValue('signupOtpInputs');
+  const errEl=document.getElementById('signupOtpError');
+  const btn=document.getElementById('signupVerifyBtn');
+  if(code.length<6) return;
+  errEl.innerText=''; btn.innerText='Verifying...'; btn.disabled=true;
+  fetch('/ajax/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,purpose:'signup'})})
+  .then(r=>r.json()).then(data=>{
+    if(data.success){
+      if(signupTimerInterval) clearInterval(signupTimerInterval);
       bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
-      Swal.fire({
-        icon: 'success', title: 'Account Created! 🎉',
-        text: data.message, timer: 2000, showConfirmButton: false
-      }).then(() => location.reload());
-    } else {
-      shakeOtpBoxes('signupOtpInputs');
-      errEl.innerText = data.message;
-      btn.innerText   = 'Verify & Create Account';
-      btn.disabled    = false;
-    }
-  })
-  .catch(() => {
-    errEl.innerText = 'Network error!';
-    btn.innerText   = 'Verify & Create Account';
-    btn.disabled    = false;
+      Swal.fire({icon:'success',title:'Account Created! 🎉',text:data.message,timer:2000,showConfirmButton:false})
+          .then(()=>location.reload());
+    } else { shakeOtpBoxes('signupOtpInputs'); errEl.innerText=data.message; btn.innerText='Verify & Create Account'; btn.disabled=false; }
+  }).catch(()=>{errEl.innerText='Network error!';btn.innerText='Verify & Create Account';btn.disabled=false;});
+}
+function resendSignupOtp() {
+  fetch('/ajax/resend-otp/signup',{method:'POST'}).then(r=>r.json()).then(data=>{
+    if(data.success){
+      clearOtpBoxes('signupOtpInputs');
+      if(signupTimerInterval) clearInterval(signupTimerInterval);
+      document.getElementById('signupTimerDisplay').classList.remove('expired');
+      signupTimerInterval=startCountdown('signupTimerDisplay',600,()=>{
+        document.getElementById('signupVerifyBtn').disabled=true;
+        document.getElementById('signupResendBtn').disabled=false;
+      });
+      startResendCooldown('signupResendBtn','signupResendTimer',30);
+      Swal.fire({icon:'success',title:'OTP Sent!',text:data.message,timer:1500,showConfirmButton:false});
+    } else { alert(data.message); }
   });
 }
-
-function resendSignupOtp() {
-  fetch('/ajax/resend-otp/signup', { method: 'POST' })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        clearOtpBoxes('signupOtpInputs');
-        if (signupTimerInterval) clearInterval(signupTimerInterval);
-        document.getElementById('signupTimerDisplay').classList.remove('expired');
-        signupTimerInterval = startCountdown('signupTimerDisplay', 600, () => {
-          document.getElementById('signupVerifyBtn').disabled = true;
-          document.getElementById('signupResendBtn').disabled = false;
-        });
-        startResendCooldown('signupResendBtn', 'signupResendTimer', 30);
-        Swal.fire({ icon:'success', title:'OTP Sent!', text: data.message, timer:1500, showConfirmButton:false });
-      } else {
-        alert(data.message);
-      }
-    });
-}
-
 function backToSignup() {
-  document.getElementById('signupOtpStep').style.display  = 'none';
-  document.getElementById('signupFields').style.display   = 'block';
-  const btn = document.querySelector('#signupFields .btn-success');
-  btn.innerText = 'Sign Up →';
-  btn.disabled  = false;
-  if (signupTimerInterval) clearInterval(signupTimerInterval);
+  document.getElementById('signupOtpStep').style.display='none';
+  document.getElementById('signupFields').style.display='block';
+  const btn=document.querySelector('#signupFields .btn-success');
+  btn.innerText='Sign Up →'; btn.disabled=false;
+  if(signupTimerInterval) clearInterval(signupTimerInterval);
 }
 
-
-// ════════════════════════════════════════════════════════════
-// FORGOT PASSWORD OTP
-// ════════════════════════════════════════════════════════════
 let forgotTimerInterval = null;
-
-setupOtpBoxes('forgotOtpInputs', code => {
+setupOtpBoxes('forgotOtpInputs', code=>{
   document.getElementById('forgotVerifyBtn').disabled = code.length < 6;
 });
-
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('resetPasswordForm');
-  if (!form) return;
-
-  form.addEventListener('submit', async function(e) {
+document.addEventListener('DOMContentLoaded',()=>{
+  const form=document.getElementById('resetPasswordForm');
+  if(!form) return;
+  form.addEventListener('submit',async function(e){
     e.preventDefault();
-    const email        = form.email.value.trim();
-    const new_password = form.new_password.value;
-    const btn          = form.querySelector('[type="submit"]');
-
-    btn.innerText = 'Sending OTP...';
-    btn.disabled  = true;
-
+    const email=form.email.value.trim(), new_password=form.new_password.value;
+    const btn=form.querySelector('[type="submit"]');
+    btn.innerText='Sending OTP...'; btn.disabled=true;
     try {
-      const res  = await fetch('/forgot_password/reset_password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, new_password })
-      });
-      const data = await res.json();
-
-      if (data.status === 'otp_sent') {
-        document.getElementById('forgotStep1').style.display = 'none';
-        document.getElementById('forgotStep2').style.display = 'block';
-        document.getElementById('forgotOtpEmail').innerText  = email;
-        document.getElementById('forgotModalTitle').innerText = 'Enter OTP';
+      const res=await fetch('/forgot_password/reset_password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,new_password})});
+      const data=await res.json();
+      if(data.status==='otp_sent'){
+        document.getElementById('forgotStep1').style.display='none';
+        document.getElementById('forgotStep2').style.display='block';
+        document.getElementById('forgotOtpEmail').innerText=email;
+        document.getElementById('forgotModalTitle').innerText='Enter OTP';
         clearOtpBoxes('forgotOtpInputs');
-
-        if (forgotTimerInterval) clearInterval(forgotTimerInterval);
+        if(forgotTimerInterval) clearInterval(forgotTimerInterval);
         document.getElementById('forgotTimerDisplay').classList.remove('expired');
-        forgotTimerInterval = startCountdown('forgotTimerDisplay', 600, () => {
-          document.getElementById('forgotVerifyBtn').disabled = true;
-          document.getElementById('forgotResendBtn').disabled = false;
+        forgotTimerInterval=startCountdown('forgotTimerDisplay',600,()=>{
+          document.getElementById('forgotVerifyBtn').disabled=true;
+          document.getElementById('forgotResendBtn').disabled=false;
         });
-        startResendCooldown('forgotResendBtn', 'forgotResendTimer', 30);
-
-        setTimeout(() => {
-          document.querySelector('#forgotOtpInputs .otp-box').focus();
-        }, 100);
-      } else {
-        Swal.fire({ icon:'error', title:'Error', text: data.message });
-        btn.innerText = 'Send OTP';
-        btn.disabled  = false;
-      }
-    } catch {
-      Swal.fire('Error', 'Something went wrong', 'error');
-      btn.innerText = 'Send OTP';
-      btn.disabled  = false;
-    }
+        startResendCooldown('forgotResendBtn','forgotResendTimer',30);
+        setTimeout(()=>document.querySelector('#forgotOtpInputs .otp-box').focus(),100);
+      } else { Swal.fire({icon:'error',title:'Error',text:data.message}); btn.innerText='Send OTP'; btn.disabled=false; }
+    } catch { Swal.fire('Error','Something went wrong','error'); btn.innerText='Send OTP'; btn.disabled=false; }
   });
 });
-
 function verifyForgotOtp() {
-  const code  = getOtpValue('forgotOtpInputs');
-  const errEl = document.getElementById('forgotOtpError');
-  const btn   = document.getElementById('forgotVerifyBtn');
-
-  if (code.length < 6) return;
-
-  errEl.innerText = '';
-  btn.innerText   = 'Verifying...';
-  btn.disabled    = true;
-
-  fetch('/ajax/verify-otp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, purpose: 'reset' })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      if (forgotTimerInterval) clearInterval(forgotTimerInterval);
+  const code=getOtpValue('forgotOtpInputs');
+  const errEl=document.getElementById('forgotOtpError');
+  const btn=document.getElementById('forgotVerifyBtn');
+  if(code.length<6) return;
+  errEl.innerText=''; btn.innerText='Verifying...'; btn.disabled=true;
+  fetch('/ajax/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,purpose:'reset'})})
+  .then(r=>r.json()).then(data=>{
+    if(data.success){
+      if(forgotTimerInterval) clearInterval(forgotTimerInterval);
       bootstrap.Modal.getInstance(document.getElementById('forgetPasswordModal')).hide();
-      Swal.fire({
-        icon: 'success', title: 'Password Reset! 🎉',
-        text: data.message, timer: 2000, showConfirmButton: false
-      }).then(() => location.reload());
-    } else {
-      shakeOtpBoxes('forgotOtpInputs');
-      errEl.innerText = data.message;
-      btn.innerText   = 'Verify & Reset Password';
-      btn.disabled    = false;
-    }
-  })
-  .catch(() => {
-    errEl.innerText = 'Network error!';
-    btn.innerText   = 'Verify & Reset Password';
-    btn.disabled    = false;
+      Swal.fire({icon:'success',title:'Password Reset! 🎉',text:data.message,timer:2000,showConfirmButton:false})
+          .then(()=>location.reload());
+    } else { shakeOtpBoxes('forgotOtpInputs'); errEl.innerText=data.message; btn.innerText='Verify & Reset Password'; btn.disabled=false; }
+  }).catch(()=>{errEl.innerText='Network error!';btn.innerText='Verify & Reset Password';btn.disabled=false;});
+}
+function resendForgotOtp() {
+  fetch('/ajax/resend-otp/reset',{method:'POST'}).then(r=>r.json()).then(data=>{
+    if(data.success){
+      clearOtpBoxes('forgotOtpInputs');
+      if(forgotTimerInterval) clearInterval(forgotTimerInterval);
+      document.getElementById('forgotTimerDisplay').classList.remove('expired');
+      forgotTimerInterval=startCountdown('forgotTimerDisplay',600,()=>{
+        document.getElementById('forgotVerifyBtn').disabled=true;
+        document.getElementById('forgotResendBtn').disabled=false;
+      });
+      startResendCooldown('forgotResendBtn','forgotResendTimer',30);
+      Swal.fire({icon:'success',title:'OTP Sent!',text:data.message,timer:1500,showConfirmButton:false});
+    } else { alert(data.message); }
   });
 }
-
-function resendForgotOtp() {
-  fetch('/ajax/resend-otp/reset', { method: 'POST' })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        clearOtpBoxes('forgotOtpInputs');
-        if (forgotTimerInterval) clearInterval(forgotTimerInterval);
-        document.getElementById('forgotTimerDisplay').classList.remove('expired');
-        forgotTimerInterval = startCountdown('forgotTimerDisplay', 600, () => {
-          document.getElementById('forgotVerifyBtn').disabled = true;
-          document.getElementById('forgotResendBtn').disabled = false;
-        });
-        startResendCooldown('forgotResendBtn', 'forgotResendTimer', 30);
-        Swal.fire({ icon:'success', title:'OTP Sent!', text: data.message, timer:1500, showConfirmButton:false });
-      } else {
-        alert(data.message);
-      }
-    });
-}
-
 function backToForgot() {
-  document.getElementById('forgotStep2').style.display = 'none';
-  document.getElementById('forgotStep1').style.display = 'block';
-  document.getElementById('forgotModalTitle').innerText = 'Reset Password';
-  const btn = document.querySelector('#resetPasswordForm [type="submit"]');
-  btn.innerText = 'Send OTP';
-  btn.disabled  = false;
-  if (forgotTimerInterval) clearInterval(forgotTimerInterval);
+  document.getElementById('forgotStep2').style.display='none';
+  document.getElementById('forgotStep1').style.display='block';
+  document.getElementById('forgotModalTitle').innerText='Reset Password';
+  const btn=document.querySelector('#resetPasswordForm [type="submit"]');
+  btn.innerText='Send OTP'; btn.disabled=false;
+  if(forgotTimerInterval) clearInterval(forgotTimerInterval);
 }
 </script>
+
+{# ── FLASH SALE BANNER ── #}
+<div id="flashSaleBanner"
+     style="display:none; position:sticky; top:0; z-index:1050;
+            background:linear-gradient(90deg,#dc2626,#b91c1c);
+            color:white; padding:10px 20px;
+            align-items:center; justify-content:center; gap:16px;
+            font-size:14px; font-weight:600; flex-wrap:wrap;">
+  <span style="display:flex;align-items:center;gap:6px;">
+    ⚡ <strong id="fsBannerName"></strong> &mdash; Maryaadith Samay!
+  </span>
+  <span style="background:rgba(255,255,255,0.2); padding:4px 16px;
+               border-radius:20px; font-variant-numeric:tabular-nums;
+               font-size:15px; letter-spacing:1px;" id="fsBannerTimer">00:00:00</span>
+  <span style="font-size:12px; opacity:0.85;">⏰ Jaldi karo!</span>
+</div>
+ 
+<script>
+(function () {
+  let timerInt = null;
+ 
+  // HH:MM:SS format
+  function fmt(sec) {
+    sec = Math.max(0, Math.floor(sec));
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return [h, m, s].map(x => String(x).padStart(2, '0')).join(':');
+  }
+ 
+  // Badge + price inject
+  function applyBadges(items) {
+    const map = {};
+    items.forEach(it => { map[it.product_id] = it; });
+ 
+    document.querySelectorAll('.flash-sale-badge').forEach(badge => {
+      const pid = parseInt(badge.dataset.productId);
+      if (!map[pid]) return;
+      const item = map[pid];
+ 
+      // Show badge
+      badge.classList.remove('d-none');
+      badge.style.display = 'flex';
+      badge.querySelector('.badge-pct').textContent = Math.round(item.discount_pct);
+ 
+      // Sale price inject (sirf 1 vaar)
+      const origEl = document.querySelector('.original-price-' + pid);
+      if (origEl && !origEl.dataset.updated) {
+        origEl.dataset.updated = '1';
+        const orig = parseFloat(item.original_price);
+        const sale = parseFloat(item.sale_price);
+        origEl.outerHTML =
+          '<div class="d-flex align-items-center gap-2 mb-1 original-price-' + pid + '" data-updated="1">' +
+            '<span style="color:#dc2626;font-weight:700;font-size:15px;">₹' + sale.toFixed(0) + '</span>' +
+            '<span style="text-decoration:line-through;color:#aaa;font-size:12px;">₹' + orig.toFixed(0) + '</span>' +
+          '</div>';
+      }
+    });
+  }
+ 
+  // Countdown — server UTC ISO string compare with Date.now()
+  function startTimer(endIso) {
+    const bannerTime = document.getElementById('fsBannerTimer');
+    if (timerInt) clearInterval(timerInt);
+ 
+    const endMs = new Date(endIso + 'Z').getTime(); // force UTC parse
+ 
+    timerInt = setInterval(() => {
+      const rem = (endMs - Date.now()) / 1000;
+      if (rem <= 0) {
+        clearInterval(timerInt);
+        location.reload(); // badges hatavva
+        return;
+      }
+      if (bannerTime) bannerTime.textContent = fmt(rem);
+    }, 1000);
+ 
+    // Immediate first tick
+    if (bannerTime) bannerTime.textContent = fmt((endMs - Date.now()) / 1000);
+  }
+ 
+  function loadFlashSale() {
+    fetch('/api/flash-sale')
+      .then(r => r.json())
+      .then(data => {
+        if (!data.active) return;
+ 
+        // Show banner
+        const banner = document.getElementById('flashSaleBanner');
+        const nameEl = document.getElementById('fsBannerName');
+        if (banner) {
+          banner.style.display = 'flex';
+          if (nameEl) nameEl.textContent = data.sale_name;
+        }
+ 
+        // Badges + prices
+        applyBadges(data.items);
+ 
+        // Timer
+        startTimer(data.ends_at);
+      })
+      .catch(() => {});
+  }
+ 
+  // DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadFlashSale);
+  } else {
+    loadFlashSale();
+  }
+})();
+</script>
+<script>
+(async function initFlashSaleBadges() {
+  try {
+    const res  = await fetch('/api/flash-sale');
+    const data = await res.json();
+    if (!data.active) return;
+
+    const saleMap = {};
+    data.items.forEach(item => {
+      saleMap[item.product_id] = item.discount_pct;
+    });
+
+    document.querySelectorAll('.flash-sale-badge').forEach(badge => {
+      const pid = parseInt(badge.dataset.productId);
+      if (saleMap[pid]) {
+        badge.querySelector('.badge-pct').textContent = Math.round(saleMap[pid]);
+        badge.classList.remove('d-none');
+        badge.style.display = 'flex';
+      }
+    });
+
+  } catch(e) {
+    console.warn('Flash sale fetch failed:', e);
+  }
+})();
+</script>
+
+
+
+
+
+
 
 </body>
 </html>

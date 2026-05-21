@@ -1,0 +1,71 @@
+{# ════════════════════════════════════════════════════════════════════
+   FILE 1: templates/my_rewards.html
+   ════════════════════════════════════════════════════════════════════ #}
+{% extends "base.html" %}
+{% block title %}My Rewards | GreenMart{% endblock %}
+{% block content %}
+
+<div class="container py-5" style="max-width:700px;">
+  <h3 class="fw-bold mb-1" style="color:#1a4a22;"><i class="bi bi-wallet2 me-2"></i>My Reward Points</h3>
+  <p class="text-muted mb-4">Earn points by writing testimonials. Redeem them for discounts!</p>
+
+  {# Balance Card #}
+  <div class="card border-0 rounded-4 mb-4 text-white"
+       style="background:linear-gradient(135deg,#1a4a22,#2e7d32);">
+    <div class="card-body p-4 d-flex align-items-center gap-4">
+      <i class="bi bi-coin" style="font-size:3.5rem; opacity:.8;"></i>
+      <div>
+        <div style="font-size:2.5rem; font-weight:700; line-height:1;">
+          {{ wallet.points if wallet else 0 }}
+        </div>
+        <div style="opacity:.8;">Total Reward Points</div>
+      </div>
+      {% if current_user.testimonial and current_user.testimonial.status != 'approved' %}
+      <a href="{{ url_for('views.submit_testimonial') }}"
+         class="btn btn-warning fw-semibold ms-auto">
+        <i class="bi bi-pencil me-1"></i> Write Review
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Info Banner #}
+  <div class="alert alert-success rounded-4 small mb-4">
+    <i class="bi bi-info-circle me-2"></i>
+    Points can be redeemed at checkout for discounts. Keep shopping & reviewing to earn more! 🎁
+  </div>
+
+  {# Transaction History #}
+  <h6 class="fw-bold mb-3 text-muted text-uppercase" style="letter-spacing:.05em;">Transaction History</h6>
+  {% if txns %}
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    {% for txn in txns %}
+    <div class="d-flex align-items-center gap-3 px-4 py-3
+                {% if not loop.last %}border-bottom{% endif %}">
+      <div class="rounded-circle d-flex align-items-center justify-content-center"
+           style="width:40px;height:40px;min-width:40px;
+                  background:{% if txn.points>0 %}#e8f5e9{% else %}#fce4ec{% endif %};">
+        <i class="bi bi-{% if txn.points>0 %}arrow-up-circle-fill text-success{% else %}arrow-down-circle-fill text-danger{% endif %}"></i>
+      </div>
+      <div class="flex-grow-1">
+        <div class="fw-semibold small">{{ txn.reason }}</div>
+        <small class="text-muted">{{ txn.created_at.strftime('%d %b %Y, %H:%M') }}</small>
+      </div>
+      <div class="fw-bold {% if txn.points>0 %}text-success{% else %}text-danger{% endif %}">
+        {% if txn.points>0 %}+{% endif %}{{ txn.points }} pts
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-clock-history" style="font-size:3rem;"></i>
+    <p class="mt-2">No transactions yet. Submit a testimonial to earn your first points!</p>
+    <a href="{{ url_for('views.submit_testimonial') }}" class="btn btn-success rounded-3">
+      <i class="bi bi-pencil me-1"></i> Write a Review
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

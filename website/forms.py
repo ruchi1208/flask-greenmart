@@ -3,6 +3,10 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Email, EqualTo, Length
 from wtforms import StringField, FloatField, IntegerField, BooleanField, SubmitField, FileField, TextAreaField
 from wtforms.validators import DataRequired
+from flask_wtf import FlaskForm
+from wtforms import StringField, FloatField, IntegerField, SubmitField, TextAreaField, SelectField
+from wtforms.validators import DataRequired
+from flask_wtf.file import FileField, FileAllowed
 
 # -----------------------------
 # SIGNUP FORM
@@ -27,13 +31,16 @@ class LoginForm(FlaskForm):
 
 
 class ShopItemsForm(FlaskForm):
-    product_name = StringField("Product Name", validators=[DataRequired()])
-    current_price = FloatField("Current Price", validators=[DataRequired()])
-    previous_price = FloatField("Previous Price")
-    product_picture = FileField("Product Image")
-    description = TextAreaField("Description")
-    stock = IntegerField("Stock")  # <-- Add this
-    submit = SubmitField("Save")
+    product_name    = StringField("Product Name", validators=[DataRequired()])
+    current_price   = FloatField("Current Price", validators=[DataRequired()])
+    previous_price  = FloatField("Previous Price")
+    product_picture = FileField("Product Image", validators=[
+        FileAllowed(['jpg', 'jpeg', 'png', 'webp'], 'Only images!')
+    ])
+    description  = TextAreaField("Description")
+    stock        = IntegerField("Stock", default=0)
+    category_id  = SelectField("Category", coerce=int, validators=[DataRequired()])  # ✅ નવું
+    submit       = SubmitField("Save")
 
 class CategoryForm(FlaskForm):
     name = StringField("Category Name", validators=[DataRequired()])
@@ -43,3 +50,4 @@ class SettingsForm(FlaskForm):
     store_name = StringField("Store Name", validators=[DataRequired()])
     contact_email = StringField("Contact Email", validators=[DataRequired()])
     submit = SubmitField("Save Settings")
+

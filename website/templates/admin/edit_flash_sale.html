@@ -1,0 +1,360 @@
+{% extends "admin/base.html" %}
+{% block title %}Edit Flash Sale | GreenMart Admin{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --green:       #1a7a4a;
+    --green-dark:  #0f5233;
+    --green-light: #f0faf5;
+    --green-mid:   #d1f0e0;
+    --red:         #dc2626;
+    --red-light:   #fef2f2;
+    --amber:       #d97706;
+    --gray-50:     #f9fafb;
+    --gray-100:    #f3f4f6;
+    --gray-200:    #e5e7eb;
+    --gray-400:    #9ca3af;
+    --gray-600:    #4b5563;
+    --gray-800:    #1f2937;
+    --radius:      12px;
+    --radius-sm:   8px;
+    --shadow:      0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md:   0 4px 16px rgba(0,0,0,0.10);
+  }
+  .edit-page { padding: 24px 32px; max-width: 1100px; }
+
+  /* Breadcrumb */
+  .breadcrumb-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--gray-400); margin-bottom: 20px;
+  }
+  .breadcrumb-row a { color: var(--green); text-decoration: none; font-weight: 600; }
+  .breadcrumb-row a:hover { text-decoration: underline; }
+
+  /* Sale info bar */
+  .sale-info-bar {
+    background: white; border: 1px solid var(--gray-200);
+    border-radius: var(--radius); padding: 18px 22px;
+    margin-bottom: 22px; box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .sale-info-left h3 { font-size: 18px; font-weight: 700; color: var(--gray-800); margin: 0 0 4px; }
+  .sale-info-left p  { font-size: 12px; color: var(--gray-400); margin: 0; }
+  .sale-info-right { display: flex; align-items: center; gap: 10px; }
+
+  .live-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #fef2f2; color: var(--red);
+    font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 99px;
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .inactive-pill {
+    background: var(--gray-100); color: var(--gray-400);
+    font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 99px;
+  }
+  .timer-display {
+    font-size: 18px; font-weight: 700; color: var(--red);
+    font-variant-numeric: tabular-nums; letter-spacing: 1px;
+  }
+
+  .btn { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+  .btn-green  { background: var(--green); color: white; }
+  .btn-green:hover  { background: var(--green-dark); color: white; }
+  .btn-red    { background: var(--red-light); color: var(--red); border: 1px solid #fecaca; }
+  .btn-red:hover    { background: var(--red); color: white; }
+  .btn-gray   { background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-200); }
+  .btn-gray:hover   { background: var(--gray-200); }
+
+  /* Two column layout */
+  .edit-grid { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
+
+  /* Panel cards */
+  .panel-card {
+    background: white; border: 1px solid var(--gray-200);
+    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  }
+  .panel-header {
+    padding: 14px 18px; border-bottom: 1px solid var(--gray-100);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-header h5 { font-size: 14px; font-weight: 700; color: var(--gray-800); margin: 0; }
+  .panel-body { padding: 18px; }
+
+  /* Bulk form */
+  .bulk-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 16px; }
+  .bulk-row .field { flex: 1; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 5px; }
+  .field input, .field select {
+    width: 100%; padding: 8px 11px; font-size: 13px;
+    border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+    background: var(--gray-50); color: var(--gray-800); outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--green); background: white; }
+
+  /* Products in sale table */
+  .sale-items-table { width: 100%; border-collapse: collapse; }
+  .sale-items-table th {
+    background: var(--gray-50); font-size: 11px; font-weight: 700;
+    color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--gray-100);
+  }
+  .sale-items-table td { padding: 12px 14px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; font-size: 13px; }
+  .sale-items-table tr:last-child td { border-bottom: none; }
+  .sale-items-table tr:hover td { background: var(--gray-50); }
+
+  .prod-img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1px solid var(--gray-100); }
+  .prod-name { font-weight: 600; color: var(--gray-800); }
+  .prod-cat  { font-size: 11px; color: var(--gray-400); }
+  .orig-price { color: var(--gray-600); }
+  .sale-price-cell { font-weight: 700; color: var(--green); }
+  .disc-badge { background: #fef2f2; color: var(--red); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
+
+  /* Inline disc edit */
+  .disc-form { display: flex; gap: 6px; align-items: center; }
+  .disc-inp {
+    width: 64px; padding: 5px 8px; font-size: 13px; text-align: center;
+    border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+    background: var(--gray-50); color: var(--gray-800); outline: none;
+  }
+  .disc-inp:focus { border-color: var(--green); background: white; }
+  .btn-xs { padding: 5px 9px; font-size: 11px; font-weight: 700; border-radius: 6px; cursor: pointer; border: none; }
+  .btn-xs-green { background: var(--green); color: white; }
+  .btn-xs-red   { background: var(--red-light); color: var(--red); }
+  .btn-xs-red:hover { background: var(--red); color: white; }
+
+  /* Add product panel */
+  .add-product-list { max-height: 480px; overflow-y: auto; }
+  .add-product-list::-webkit-scrollbar { width: 4px; }
+  .add-product-list::-webkit-scrollbar-thumb { background: var(--green-mid); border-radius: 99px; }
+
+  .product-row-add {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-bottom: 1px solid var(--gray-100);
+    transition: background 0.12s;
+  }
+  .product-row-add:last-child { border-bottom: none; }
+  .product-row-add:hover { background: var(--gray-50); }
+  .product-row-add img { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; border: 1px solid var(--gray-100); flex-shrink: 0; }
+  .product-row-add .pname { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+  .product-row-add .pprice { font-size: 12px; color: var(--gray-400); }
+  .product-row-add.already-added { opacity: 0.5; pointer-events: none; }
+  .product-row-add.already-added .added-label { font-size: 11px; color: var(--green); font-weight: 700; }
+  .add-disc-inp {
+    width: 56px; padding: 4px 7px; font-size: 12px; text-align: center;
+    border: 1px solid var(--gray-200); border-radius: 6px; background: var(--gray-50); outline: none;
+  }
+  .add-disc-inp:focus { border-color: var(--green); }
+  .search-filter {
+    width: 100%; padding: 9px 12px; font-size: 13px; margin-bottom: 1px;
+    border: none; border-bottom: 1px solid var(--gray-100);
+    background: var(--gray-50); outline: none; color: var(--gray-800);
+  }
+  .search-filter:focus { background: white; border-bottom-color: var(--green); }
+
+  /* Empty state */
+  .empty-items { padding: 40px; text-align: center; color: var(--gray-400); font-size: 13px; }
+  .empty-items .empty-icon { font-size: 32px; margin-bottom: 10px; }
+</style>
+
+<div class="edit-page">
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb-row">
+    <a href="{{ url_for('admin.manage_flash_sales') }}">⚡ Flash Sales</a>
+    <span>/</span>
+    <span>{{ sale.name }}</span>
+  </div>
+
+  <!-- Sale Info Bar -->
+  <div class="sale-info-bar">
+    <div class="sale-info-left">
+      <h3>{{ sale.name }}</h3>
+      <p>
+        {{ sale.starts_at.strftime('%d %b %Y, %H:%M') }} →
+        {{ sale.ends_at.strftime('%d %b %Y, %H:%M') }} UTC
+      </p>
+    </div>
+    <div class="sale-info-right">
+
+      {% if sale.is_live %}
+        <span class="live-pill"><span class="live-dot"></span> Live</span>
+        <div class="timer-display" data-end="{{ sale.ends_at.strftime('%Y-%m-%dT%H:%M:%S') }}">--:--:--</div>
+        <form method="POST" action="{{ url_for('admin.toggle_flash_sale', sale_id=sale.id) }}" style="margin:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-red">⏹ Sale Band Karo</button>
+        </form>
+      {% else %}
+        <span class="inactive-pill">◯ Inactive</span>
+        <form method="POST" action="{{ url_for('admin.toggle_flash_sale', sale_id=sale.id) }}" style="margin:0;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-green">▶ Sale Start Karo</button>
+        </form>
+      {% endif %}
+
+      <a href="{{ url_for('admin.manage_flash_sales') }}" class="btn btn-gray">← Pachi</a>
+    </div>
+  </div>
+
+  <!-- Bulk Discount Row -->
+  <div class="panel-card" style="margin-bottom: 18px;">
+    <div class="panel-body">
+      <form method="POST" action="{{ url_for('admin.bulk_flash_discount', sale_id=sale.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="bulk-row">
+          <div class="field" style="max-width: 260px;">
+            <label>Badha Selected Products par Ek Sathe Discount Lagavo</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="number" name="bulk_pct" min="1" max="90" value="20"
+                     style="width:90px;" placeholder="20">
+              <span style="font-size:13px; color:var(--gray-600);">% OFF — badha products par</span>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-green" style="height: 38px;">⚡ Apply Karo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Two column grid -->
+  <div class="edit-grid">
+
+    <!-- LEFT: Products in this sale -->
+    <div class="panel-card">
+      <div class="panel-header">
+        <h5>📦 Sale ma Products ({{ sale.items|length }})</h5>
+        {% if sale.items %}
+        <span style="font-size:12px; color:var(--gray-400);">
+          Avg {{ "%.0f"|format(sale.items|map(attribute='discount_pct')|list|sum / sale.items|length) }}% off
+        </span>
+        {% endif %}
+      </div>
+
+      {% if sale.items %}
+      <table class="sale-items-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Original</th>
+            <th>Discount</th>
+            <th>Sale Price</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in sale.items %}
+          <tr>
+            <td>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <img src="{{ item.product.image }}" class="prod-img"
+                     onerror="this.src='/static/images/placeholder.jpg'">
+                <div>
+                  <div class="prod-name">{{ item.product.name }}</div>
+                  <div class="prod-cat">{{ item.product.category.name if item.product.category else '—' }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="orig-price">₹{{ item.product.price }}</td>
+            <td>
+              <!-- Inline discount update form -->
+              <form method="POST"
+                    action="{{ url_for('admin.add_flash_sale_item', sale_id=sale.id) }}"
+                    class="disc-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="product_id" value="{{ item.product_id }}">
+                <input type="number" name="discount_pct" class="disc-inp"
+                       value="{{ item.discount_pct|int }}" min="1" max="90">
+                <button type="submit" class="btn-xs btn-xs-green">✓</button>
+              </form>
+            </td>
+            <td class="sale-price-cell">₹{{ item.sale_price|int }}</td>
+            <td>
+              <form method="POST"
+                    action="{{ url_for('admin.remove_flash_sale_item', sale_id=sale.id, item_id=item.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-xs btn-xs-red"
+                        onclick="return confirm('Remove {{ item.product.name }}?')">✕</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-items">
+        <div class="empty-icon">📦</div>
+        <p>Haju koi product add nathi karyun.<br>Right panel ma thi products select karo.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- RIGHT: Add products -->
+    <div class="panel-card" style="align-self: start; position: sticky; top: 16px;">
+      <div class="panel-header">
+        <h5>➕ Product Add Karo</h5>
+      </div>
+      <input type="text" class="search-filter" id="productSearch"
+             placeholder="🔍  Product search karo...">
+      <div class="add-product-list" id="productList">
+        {% for product in products %}
+        <div class="product-row-add {% if product.id in existing_ids %}already-added{% endif %}"
+             data-name="{{ product.name|lower }}">
+          <img src="{{ product.image }}" onerror="this.src='/static/images/placeholder.jpg'">
+          <div style="flex:1; min-width:0;">
+            <div class="pname">{{ product.name }}</div>
+            <div class="pprice">₹{{ product.price }}</div>
+          </div>
+
+          {% if product.id in existing_ids %}
+            <span class="added-label">✓ Added</span>
+          {% else %}
+            <form method="POST"
+                  action="{{ url_for('admin.add_flash_sale_item', sale_id=sale.id) }}"
+                  style="display:flex; gap:5px; align-items:center; flex-shrink:0;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="product_id" value="{{ product.id }}">
+              <input type="number" name="discount_pct" class="add-disc-inp"
+                     value="20" min="1" max="90" placeholder="%">
+              <button type="submit" class="btn-xs btn-xs-green">+</button>
+            </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div><!-- /edit-grid -->
+
+</div><!-- /edit-page -->
+
+<script>
+// ── Live timer on edit page ─────────────────────────────
+const timerEl = document.querySelector('.timer-display[data-end]');
+if (timerEl) {
+  function tick() {
+    const endMs = new Date(timerEl.dataset.end + 'Z').getTime();
+    const rem   = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+    if (rem <= 0) { timerEl.textContent = 'Khatam'; return; }
+    const h = Math.floor(rem / 3600);
+    const m = Math.floor((rem % 3600) / 60);
+    const s = rem % 60;
+    timerEl.textContent = [h,m,s].map(x => String(x).padStart(2,'0')).join(':');
+    setTimeout(tick, 1000);
+  }
+  tick();
+}
+
+// ── Product search filter ───────────────────────────────
+document.getElementById('productSearch').addEventListener('input', function() {
+  const q = this.value.toLowerCase().trim();
+  document.querySelectorAll('.product-row-add').forEach(row => {
+    const name = row.dataset.name || '';
+    row.style.display = (!q || name.includes(q)) ? '' : 'none';
+  });
+});
+</script>
+
+{% endblock %}

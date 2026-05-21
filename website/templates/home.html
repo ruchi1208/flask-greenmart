@@ -3,13 +3,118 @@
 {% block title %}Home | Green Mart{% endblock %}
 
 {% block content %}
+
+{# ── Reusable product card macro ─────────────────────────────────── #}
+{%  macro product_card(product, col_class="col mb-4") %}
+<div class="{{ col_class }} product-card">
+  <div class="product-img-box position-relative">
+    <img src="{{ product.image }}" class="img-fluid" style="height:200px; object-fit:cover;">
+
+    {# Flash Sale Badge #}
+    <span class="flash-sale-badge d-none"
+          data-product-id="{{ product.id }}"
+          style="position:absolute; top:8px; left:8px; z-index:10;
+                 background:#dc2626; color:#fff; font-size:11px; font-weight:700;
+                 padding:3px 8px; border-radius:20px;">
+      ⚡ <span class="badge-pct"></span>% OFF
+    </span>
+
+    {# Product Sale Badge #}
+    {% if product.active_sale %}
+      <span style="position:absolute; top:38px; left:8px; z-index:10;
+                   background:#16a34a; color:#fff; font-size:11px; font-weight:700;
+                   padding:3px 8px; border-radius:20px;">
+        🏷 {{ product.active_sale.discount_pct | int }}% OFF
+        {% if product.active_sale.label %} · {{ product.active_sale.label }}{% endif %}
+      </span>
+    {% endif %}
+
+    <div class="hover-icons">
+      <a href="{{ url_for('views.product_detail', product_id=product.id) }}">
+        <i class="bi bi-eye"></i>
+      </a>
+      <a href="{{ url_for('views.add_to_wishlist', product_id=product.id) }}">
+        <i class="bi bi-heart"></i>
+      </a>
+      <a href="#" onclick="shareProduct('{{ product.name }}', '{{ product.id }}'); return false;">
+        <i class="bi bi-share-fill"></i>
+      </a>
+    </div>
+  </div>
+
+  <h6 class="mt-2">{{ product.name }}</h6>
+
+  {# Price Row #}
+  {% if product.active_sale %}
+    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+      <h6 class="mb-0 text-decoration-line-through text-muted" style="font-size:13px;">
+        ₹{{ product.price }} 
+      </h6>
+      <h6 class="mb-0 fw-bold" style="color:#dc2626; font-size:16px;">
+        ₹{{ product.active_sale.sale_price }}
+      </h6>
+    </div>
+  {% else %}
+    <h6 class="mb-1 original-price-{{ product.id }}" style="color:#0B7D2A">
+      ₹{{ product.price }} / kg
+    </h6>
+  {% endif %}
+
+  {# Stock Status + Add to Cart Form #}
+  {% if product.stock <= 0 %}
+    <p class="mb-1"><span class="badge bg-danger">Out of Stock</span></p>
+    <button class="btn btn-secondary w-100 mt-1" disabled>
+      <i class="bi bi-x-circle me-1"></i> Unavailable
+    </button>
+
+  {% else %}
+    {% if product.stock <= 5 %}
+      <p class="mb-1">
+        <span class="badge bg-warning text-dark">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          Only {{ product.stock }} left!
+        </span>
+      </p>
+    {% else %}
+      <p class="mb-1 text-muted small">In Stock: {{ product.stock }}</p>
+    {% endif %}
+
+    {# ✅ CORRECT: product.id, not p.id #}
+    <form action="{{ url_for('views.add_to_cart', product_id=product.id) }}" method="POST">
+      <input type="hidden" name="id" value="{{ product.id }}">
+
+      {% if product.variants %}
+        <select name="variant_id"
+                class="form-select form-select-sm mb-2"
+                onchange="updatePrice(this, {{ product.id }}, {{ product.price }})">
+          <option value="">-- Select Size --</option>
+          {% for v in product.variants if v.is_active %}
+            <option value="{{ v.id }}"
+                    data-price="{{ v.price }}"
+                    data-stock="{{ v.stock }}">
+              {{ v.label }} — ₹{{ v.price }}
+            </option>
+          {% endfor %}
+        </select>
+      {% endif %}
+
+      <input type="hidden" name="quantity" value="1">
+      <button type="submit" class="btn btn-success w-100">
+        <i class="bi bi-cart-plus me-1"></i> Add to Cart
+      </button>
+    </form>
+  {% endif %}
+
+</div>
+{% endmacro %}
+
+{# ── HERO BANNER ─────────────────────────────────────────────────── #}
 <div class="container mt-4">
 
   <div class="row g-4 justify-content-center">
 
     <div class="col-md-8" style="background: #0B7D2A; border-radius: 25px; padding: 35px; min-height: 380px;">
       <div class="row align-items-center">
-
         <div class="col-md-7 col-12 mb-4 mb-md-0">
           <h6 style="color: greenyellow;">{{ title }}</h6>
           <h1 style="color: white; font-weight: 700;">{{ subtitle }}</h1>
@@ -20,10 +125,8 @@
           <img src="{{ image1 }}" class="img-fluid"
             style="height: 320px; width: 320px; border-radius: 20px; object-fit: cover;">
         </div>
-
       </div>
     </div>
-
 
     <div class="col-md-4">
       <div class="position-relative">
@@ -37,7 +140,6 @@
     </div>
 
   </div>
-
 
   <div class="row g-4 justify-content-center mt-3">
 
@@ -77,120 +179,42 @@
   </div>
 
 </div>
+
+
+{# ── BEST SELLERS CAROUSEL ───────────────────────────────────────── #}
 <h2 class="text-center fw-bold mb-4 mt-4" style="color:#006400;">
   🌿 Best Sellers
 </h2>
 
-<div id="multiBannerSlider" class="carousel slide" data-bs-ride="carousel">
+<div id="bestSellersSlider" class="carousel slide" data-bs-ride="carousel">
   <div class="carousel-inner" data-bs-interval="1000">
 
-    <!-- SLIDE 1 -->
-    <div class="carousel-item active">
+    {% set slide_size = 5 %}
+    {% for i in range(0, best_sellers|length, slide_size) %}
+    <div class="carousel-item {% if i == 0 %}active{% endif %}">
       <div class="container py-3">
-        <div class="row text-center justify-content-center">
-          {% for id, img, title, price in [
-          (1, image6, "Cherry Tomato", "$120"),
-          (2, image7, "Organic Juice", "$150"),
-          (3, image8, "Brocoli", "$199"),
-          (4, image9, "Quinoa", "$175"),
-          (5, image10, "Grapes", "$130")
-          ] %}
-          <div class="col-lg-2 col-md-4 col-6 mb-4 product-card">
-            <div class="product-img-box">
-              <img src="{{ img }}" class="img-fluid" style="height:200px;">
-              <div class="hover-icons">
-                <!-- Quick View -->
-                <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                  <i class="bi bi-eye"></i>
-                </a>
-
-                <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                  <i class="bi bi-heart"></i>
-                </a>
-
-                <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-
-              </div>
-            </div>
-            <h6 class="mt-2">{{ title }}</h6>
-            <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-            <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-100">
-                Add to Cart
-              </button>
-            </form>
-
-
-
-          </div>
+        <div class="row row-cols-5 text-center justify-content-center g-3">
+          {% for p in best_sellers[i : i + slide_size] %}
+            {{ product_card(p) }}
           {% endfor %}
         </div>
       </div>
-    </div> <!-- SLIDE 1 END -->
-
-
-    <!-- SLIDE 2 -->
-    <div class="carousel-item">
-      <div class="container py-3">
-        <div class="row text-center justify-content-center">
-          {% for id, img, title, price in [
-          ('6', image11, "Oats", "$210"),
-          ('7', image12, "Cow Milk", "$170"),
-          ('8', image13, "Organic Spices", "$250"),
-          ('9', image14, "Avocado", "$300"),
-          ('10', image15, "Welnuts", "$350")
-          ] %}
-          <div class="col-lg-2 col-md-4 col-6 mb-4 product-card">
-            <div class="product-img-box">
-              <img src="{{ img }}" class="img-fluid" style="height:200px;">
-              <div class="hover-icons">
-                <!-- Quick View -->
-                <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                  <i class="bi bi-eye"></i>
-                </a>
-
-                <!-- Wishlist -->
-                <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                  <i class="bi bi-heart"></i>
-                </a>
-                <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-              </div>
-            </div>
-            <h6 class="mt-2">{{ title }}</h6>
-            <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-            <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-100">
-                Add to Cart
-              </button>
-            </form>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div> <!-- SLIDE 2 END -->
+    </div>
+    {% endfor %}
 
   </div>
-
-  <button class="carousel-control-prev custom-arrow prev" type="button" data-bs-target="#multiBannerSlider"
-    data-bs-slide="prev">
+  <button class="carousel-control-prev custom-arrow prev" type="button"
+    data-bs-target="#bestSellersSlider" data-bs-slide="prev">
     <i class="bi bi-chevron-left"></i>
   </button>
-
-  <button class="carousel-control-next custom-arrow next" type="button" data-bs-target="#multiBannerSlider"
-    data-bs-slide="next">
+  <button class="carousel-control-next custom-arrow next" type="button"
+    data-bs-target="#bestSellersSlider" data-bs-slide="next">
     <i class="bi bi-chevron-right"></i>
   </button>
 </div>
 
 
+{# ── TODAY'S DEALS ───────────────────────────────────────────────── #}
 <div class="container mt-5">
   <h3 class="mb-4">Today's Deals</h3>
 
@@ -225,165 +249,100 @@
 
   </div>
 </div>
+
+
+{# ── TRENDING CAROUSEL ───────────────────────────────────────────── #}
 <h2 class="text-center fw-bold mb-4 mt-4" style="color:#006400;">
   Trending Products
 </h2>
 
-<div id="multiBannerSlider" class="carousel slide" data-bs-ride="carousel">
+<div id="trendingSlider" class="carousel slide" data-bs-ride="carousel">
   <div class="carousel-inner" data-bs-interval="2500">
 
-    <!-- SLIDE 1 -->
-    <div class="carousel-item active">
+    {% for i in range(0, trending|length, slide_size) %}
+    <div class="carousel-item {% if i == 0 %}active{% endif %}">
       <div class="container py-3">
-        <div class="row text-center justify-content-center">
-          {% for id, img, title, price in [
-          ('1', image6, "Cherry Tomato", "$120"),
-          ('2', image7, "Organic Juice", "$150"),
-          ('3', image8, "Brocoli", "$199"),
-          ('4', image9, "Quinoa", "$175"),
-          ('5', image10, "Grapes", "$130")
-          ] %}
-
-          <div class="col-lg-2 col-md-4 col-6 mb-4 product-card">
-            <div class="product-img-box">
-              <img src="{{ img }}" class="img-fluid" style="height:200px;">
-              <div class="hover-icons">
-                <!-- Quick View -->
-                <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                  <i class="bi bi-eye"></i>
-                </a>
-
-                <!-- Wishlist -->
-                <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                  <i class="bi bi-heart"></i>
-                </a>
-                <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-              </div>
-            </div>
-            <h6 class="mt-2">{{ title }}</h6>
-            <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-             <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-100">
-                Add to Cart
-              </button>
-            </form>
-
-          </div>
+        <div class="row row-cols-5 text-center justify-content-center g-3">
+          {% for p in trending[i : i + slide_size] %}
+          {{ product_card(p) }}
           {% endfor %}
         </div>
       </div>
-    </div> <!-- SLIDE 1 END -->
-
-
-    <!-- SLIDE 2 -->
-    <div class="carousel-item">
-      <div class="container py-3">
-        <div class="row text-center justify-content-center">
-          {% for id, img, title, price in [
-          ('6', image11, "Oats", "$210"),
-          ('7', image12, "Cow Milk", "$170"),
-          ('8', image13, "Organic Spices", "$250"),
-          ] %}
-          <div class="col-lg-2 col-md-4 col-6 mb-4 product-card">
-            <div class="product-img-box">
-              <img src="{{ img }}" class="img-fluid" style="height:200px;">
-              <div class="hover-icons">
-                <!-- Quick View -->
-                <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                  <i class="bi bi-eye"></i>
-                </a>
-
-                <!-- Wishlist -->
-                <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                  <i class="bi bi-heart"></i>
-                </a>
-                <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-              </div>
-            </div>
-            <h6 class="mt-2">{{ title }}</h6>
-            <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-             <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-100">
-                Add to Cart
-              </button>
-            </form>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div> <!-- SLIDE 2 END -->
+    </div>
+    {% endfor %}
 
   </div>
-
-  <button class="carousel-control-prev custom-arrow prev" type="button" data-bs-target="#multiBannerSlider"
-    data-bs-slide="prev">
+  <button class="carousel-control-prev custom-arrow prev" type="button"
+    data-bs-target="#trendingSlider" data-bs-slide="prev">
     <i class="bi bi-chevron-left"></i>
   </button>
-
-  <button class="carousel-control-next custom-arrow next" type="button" data-bs-target="#multiBannerSlider"
-    data-bs-slide="next">
+  <button class="carousel-control-next custom-arrow next" type="button"
+    data-bs-target="#trendingSlider" data-bs-slide="next">
     <i class="bi bi-chevron-right"></i>
   </button>
 </div>
 
 
+{# ── DISCOUNT BANNER ─────────────────────────────────────────────── #}
 <div class="container my-5">
   <div class="row align-items-center bg-white shadow-sm rounded-4 p-4">
-
     <div class="col-md-6 mb-4 mb-md-0">
       <h3 class="fw-bold">Get 15% Discount on Your First Purchase</h3>
-      <p class="mb-3">Enjoy fresh and organic products at the best price — shop today and save big on your very first
-        order.</p>
+      <p class="mb-3">Enjoy fresh and organic products at the best price — shop today and save big on your very first order.</p>
       <a href="{{ url_for('views.shop') }}" class="btn btn-success px-4 py-2" style="border-radius: 8px; font-weight: 500;">Shop Now</a>
     </div>
-
     <div class="col-md-6 text-center">
       <img src="{{ image19 }}" class="img-fluid rounded-4" style="max-height: 300px; object-fit: cover;">
     </div>
-
   </div>
 </div>
 
 
+{# ── SHOP BY LIFESTYLE ───────────────────────────────────────────── #}
 <div class="container mt-4">
   <h4>Shop by Lifestyle</h4>
-  <div class="row text-center mt-4">
+  <div class="row text-center mt-4 g-3">
 
-    <div class="col plant box1">
-      <i class="fa-solid fa-leaf"></i>
-      <h6>Plant Based</h6>
+    <div class="col-6 col-lg-auto flex-lg-fill">
+      <div class="plant box1 py-4 px-3 rounded-3 h-100">
+        <i class="fa-solid fa-leaf fs-3 d-block mb-2"></i>
+        <h6 class="mb-0">Plant Based</h6>
+      </div>
     </div>
 
-    <div class="col plant box2">
-      <i class="fa-solid fa-heart"></i>
-      <h6>Fresh Fruits</h6>
+    <div class="col-6 col-lg-auto flex-lg-fill">
+      <div class="plant box2 py-4 px-3 rounded-3 h-100">
+        <i class="fa-solid fa-heart fs-3 d-block mb-2"></i>
+        <h6 class="mb-0">Fresh Fruits</h6>
+      </div>
     </div>
 
-    <div class="col plant box3">
-      <i class="fa-solid fa-seedling"></i>
-      <h6>Organic Veggies</h6>
+    <div class="col-6 col-lg-auto flex-lg-fill">
+      <div class="plant box3 py-4 px-3 rounded-3 h-100">
+        <i class="fa-solid fa-seedling fs-3 d-block mb-2"></i>
+        <h6 class="mb-0">Organic Veggies</h6>
+      </div>
     </div>
 
-    <div class="col plant box4">
-      <i class="fa-solid fa-carrot"></i>
-      <h6>Natural Growth</h6>
+    <div class="col-6 col-lg-auto flex-lg-fill">
+      <div class="plant box4 py-4 px-3 rounded-3 h-100">
+        <i class="fa-solid fa-carrot fs-3 d-block mb-2"></i>
+        <h6 class="mb-0">Natural Growth</h6>
+      </div>
     </div>
 
-    <div class="col plant box5">
-      <i class="fa-solid fa-snowflake"></i>
-      <h6>Healthy Drinks</h6>
+    <div class="col-6 col-lg-auto flex-lg-fill mx-auto mx-lg-0">
+      <div class="plant box5 py-4 px-3 rounded-3 h-100">
+        <i class="fa-solid fa-snowflake fs-3 d-block mb-2"></i>
+        <h6 class="mb-0">Healthy Drinks</h6>
+      </div>
     </div>
 
   </div>
 </div>
+
+
+{# ── JUICE & FRUIT IMAGE BANNERS ─────────────────────────────────── #}
 <div class="container mt-4">
   <div class="row">
     <div class="col-md-6">
@@ -408,27 +367,30 @@
     </div>
   </div>
 </div>
+
+
+{# ── TABBED PRODUCT SECTION ──────────────────────────────────────── #}
 <div class="container mt-4">
   <ul class="nav nav-tabs" id="productTabs" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" id="best-tab" data-bs-toggle="tab" data-bs-target="#best" type="button"
-        role="tab">Best Deals</button>
+      <button class="nav-link active" id="best-tab" data-bs-toggle="tab" data-bs-target="#best"
+        type="button" role="tab">Best Deals</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="bread-tab" data-bs-toggle="tab" data-bs-target="#bread" type="button"
-        role="tab">Bread</button>
+      <button class="nav-link" id="bread-tab" data-bs-toggle="tab" data-bs-target="#bread"
+        type="button" role="tab">Bread</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="juices-tab" data-bs-toggle="tab" data-bs-target="#juices" type="button"
-        role="tab">Juices</button>
+      <button class="nav-link" id="juices-tab" data-bs-toggle="tab" data-bs-target="#juices"
+        type="button" role="tab">Juices</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="organic-tab" data-bs-toggle="tab" data-bs-target="#organic" type="button"
-        role="tab">Organic</button>
+      <button class="nav-link" id="organic-tab" data-bs-toggle="tab" data-bs-target="#organic"
+        type="button" role="tab">Organic</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="fruits-tab" data-bs-toggle="tab" data-bs-target="#fruits" type="button"
-        role="tab">Organic Vegetables & Fruits</button>
+      <button class="nav-link" id="fruits-tab" data-bs-toggle="tab" data-bs-target="#fruits"
+        type="button" role="tab">Organic Vegetables &amp; Fruits</button>
     </li>
   </ul>
 
@@ -436,309 +398,335 @@
 
     <div class="tab-pane fade show active" id="best" role="tabpanel">
       <div class="row text-center justify-content-center">
-
-        {% for id, img, title, price in [
-        ('1', image6, "Cherry Tomato", "$120"),
-        ('2', image7, "Organic Juice", "$150"),
-        ('3', image8, "Brocoli", "$199"),
-        ('4', image9, "Quinoa", "$175"),
-        ('5', image10, "Grapes", "$130")
-        ] %}
-        <div class="col-lg-2 col-md-4 col-6 mb-4 mt-4 product-card">
-          <div class="product-img-box">
-            <img src="{{ img }}" class="img-fluid" style="height:200px;">
-            <div class="hover-icons">
-              <!-- Quick View -->
-              <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                <i class="bi bi-eye"></i>
-              </a>
-
-              <!-- Wishlist -->
-              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                <i class="bi bi-heart"></i>
-              </a>
-              <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-            </div>
-          </div>
-          <h6 class="mt-2">{{ title }}</h6>
-          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-           <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-100">
-                Add to Cart
-              </button>
-            </form>
-        </div>
+        {% for p in tab_best %}
+          {{ product_card(p, "col-lg-2 col-md-4 col-6 mt-4") }}
         {% endfor %}
-
-        {% for id, img, title, price in [
-        ('6', image11, "Oats", "$210"),
-        ('7', image12, "Cow Milk", "$170"),
-        ('8', image13, "Organic Spices", "$250"),
-        ('9', image14, "Avocado", "$300"),
-        ('10', image15, "Welnuts", "$350")
-        ] %}
-        <div class="col-lg-2 col-md-4 col-6 mb-4 product-card">
-          <div class="product-img-box">
-            <img src="{{ img }}" class="img-fluid" style="height:200px;">
-            <div class="hover-icons">
-              <!-- Quick View -->
-              <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                <i class="bi bi-eye"></i>
-              </a>
-
-              <!-- Wishlist -->
-              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                <i class="bi bi-heart"></i>
-              </a>
-              <a href="#"><i class="bi bi-arrow-repeat"></i></a>
-            </div>
-          </div>
-          <h6 class="mt-2">{{ title }}</h6>
-          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-           <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-100">
-                Add to Cart
-              </button>
-            </form>
-        </div>
-        {% endfor %}
-
       </div>
     </div>
-
 
     <div class="tab-pane fade" id="bread" role="tabpanel">
       <div class="row text-center justify-content-center">
-
-        {% for id, img, title, price in [
-        ('11', image17, "Bread", "$120"),
-        ('12', image22, "White Bread", "$120"),
-        ('13', image23, "Whole Wheat Bread", "$150"),
-        ('14', image24, "Multigrain Bread", "$199")
-        ] %}
-
-        <div class="col-lg-3 col-md-4 col-6 mb-3 product-card">
-          <div class="product-img-box">
-            <img src="{{ img }}" class="img-fluid" style="height:200px;">
-            <div class="hover-icons">
-              <!-- Quick View -->
-              <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                <i class="bi bi-eye"></i>
-              </a>
-
-              <!-- Wishlist -->
-              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                <i class="bi bi-heart"></i>
-              </a>
-              <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-            </div>
-          </div>
-          <h6 class="mt-2">{{ title }}</h6>
-          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-           <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-100">
-                Add to Cart
-              </button>
-            </form>
-        </div>
-
+        {% for p in tab_bread %}
+          {{ product_card(p, "col-lg-3 col-md-4 col-6 mb-3") }}
         {% endfor %}
-
       </div>
     </div>
-
 
     <div class="tab-pane fade" id="juices" role="tabpanel">
       <div class="row text-center justify-content-center">
-
-        {% for id, img, title, price in [
-        ('15', image25, "Organic Juice", "$150"),
-        ('16', image26, "Fresh Orange Juice", "$130"),
-        ('17', image27, "Mixed Fruit Juice", "$170"),
-        ('18', image28, "Healthy Green Juice", "$180")
-        ] %}
-
-        <div class="col-lg-3 col-md-4 col-6 mb-3 product-card">
-          <div class="product-img-box">
-            <img src="{{ img }}" class="img-fluid" style="height:200px;">
-            <div class="hover-icons">
-              <!-- Quick View -->
-              <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                <i class="bi bi-eye"></i>
-              </a>
-
-              <!-- Wishlist -->
-              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                <i class="bi bi-heart"></i>
-              </a>
-              <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-            </div>
-          </div>
-          <h6 class="mt-2">{{ title }}</h6>
-          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-          <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-100">
-                Add to Cart
-              </button>
-            </form>
-        </div>
-
+        {% for p in tab_juices %}
+          {{ product_card(p, "col-lg-3 col-md-4 col-6 mb-3") }}
         {% endfor %}
-
       </div>
     </div>
 
-
     <div class="tab-pane fade" id="organic" role="tabpanel">
       <div class="row text-center justify-content-center">
-
-        {% for id, img, title, price in [
-        ('19', image29, "Almond", "$150"),
-        ('20', image30, "Organic Chia Seeds", "$130"),
-        ('21', image31, "Organic Brown Rice", "$170"),
-        ('22', image32, "Organic Jaggery Powder", "$180"),
-        ('23', image11, "Oats", "$180")
-        ] %}
-
-        <div class="col-lg-3 col-md-4 col-6 mb-3 product-card">
-          <div class="product-img-box">
-            <img src="{{ img }}" class="img-fluid" style="height:200px;">
-            <div class="hover-icons">
-              <!-- Quick View -->
-              <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                <i class="bi bi-eye"></i>
-              </a>
-
-              <!-- Wishlist -->
-              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                <i class="bi bi-heart"></i>
-              </a>
-              <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-            </div>
-          </div>
-          <h6 class="mt-2">{{ title }}</h6>
-          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-           <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-100">
-                Add to Cart
-              </button>
-            </form>
-        </div>
-
+        {% for p in tab_organic %}
+          {{ product_card(p, "col-lg-3 col-md-4 col-6 mb-3") }}
         {% endfor %}
-
       </div>
     </div>
 
     <div class="tab-pane fade" id="fruits" role="tabpanel">
       <div class="row text-center justify-content-center">
-
-        {% for id, img, title, price in [
-        ('3', image8, "Organic Broccoli", "$160"),
-        ('24', image33, "Organic Baby Spinach", "$120"),
-        ('1', image6, "Organic Cherry Tomatoes", "$140"),
-        ('25', image34, "Organic Apples", "$180"),
-        ('9', image14, "Organic Avocados", "$220"),
-        ('26', image10, "Organic Grapes", "$150")
-        ] %}
-
-        <div class="col-lg-3 col-md-4 col-6 mb-3 product-card">
-          <div class="product-img-box">
-            <img src="{{ img }}" class="img-fluid" style="height:200px;">
-            <div class="hover-icons">
-              <!-- Quick View -->
-              <a href="{{ url_for('views.product_detail', product_id=id) }}">
-                <i class="bi bi-eye"></i>
-              </a>
-
-              <!-- Wishlist -->
-              <a href="{{ url_for('views.add_to_wishlist', product_id=id) }}">
-                <i class="bi bi-heart"></i>
-              </a>
-              <a href="#" onclick="shareProduct('{{ name }}', '{{ id }}')">
-    <i class="bi bi-share-fill"></i>
-</a>
-            </div>
-          </div>
-          <h6 class="mt-2">{{ title }}</h6>
-          <h6 class="mb-1" style="color:#0B7D2A">{{ price }}</h6>
-           <form action="{{ url_for('views.add_to_cart', product_id=id) }}" method="POST">
-              <input type="hidden" name="id" value="{{ id }}">
-              <input type="hidden" name="quantity" value="1">
-              <button type="submit" class="btn btn-success w-100">
-                Add to Cart
-              </button>
-            </form>
-        </div>
+        {% for p in tab_fruits %}
+          {{ product_card(p, "col-lg-3 col-md-4 col-6 mb-3") }}
         {% endfor %}
       </div>
     </div>
+
   </div>
 </div>
 
-<!-- Unique Client Testimonials Section -->
+{# ── RECENTLY VIEWED — Server Side, No JS needed ────────────────── #}
+{% if rv_products %}
+<section style="padding:48px 0; background:#f8fff8;">
+  <div class="container">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+      <div>
+        <h2 style="font-family:'DM Serif Display',serif;font-size:28px;
+                   color:#1a4a22;margin:0 0 4px;">🕐 Recently Viewed</h2>
+        <p style="font-size:13px;color:#888;margin:0;">Tu joya ela products</p>
+      </div>
+      <form action="/api/clear-recently-viewed" method="POST" style="margin:0;">
+        <button type="submit"
+                style="background:none;border:1.5px solid #d4edda;border-radius:10px;
+                       padding:7px 16px;font-size:12px;color:#888;cursor:pointer;"
+                onmouseover="this.style.borderColor='#dc2626';this.style.color='#dc2626'"
+                onmouseout="this.style.borderColor='#d4edda';this.style.color='#888'">
+          🗑 Clear History
+        </button>
+      </form>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:18px;">
+      {% for p in rv_products %}
+      <a href="{{ url_for('views.product_detail', product_id=p.id) }}"
+         style="text-decoration:none;color:inherit;display:block;">
+        <div style="background:white;border-radius:18px;border:1.5px solid #e8f5e9;
+                    overflow:hidden;transition:transform 0.22s,box-shadow 0.22s;"
+             onmouseover="this.style.transform='translateY(-5px)';this.style.boxShadow='0 12px 32px rgba(0,100,0,0.12)'"
+             onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+
+          <div style="position:relative;height:145px;overflow:hidden;
+                      background:linear-gradient(135deg,#f0fdf4,#e8f5e9);">
+            <img src="{{ p.image }}"
+                 style="width:100%;height:100%;object-fit:cover;"
+                 onerror="this.src='/static/images/placeholder.jpg'">
+
+            {% if p.stock <= 0 %}
+            <div style="position:absolute;top:10px;left:10px;background:#fee2e2;
+                        color:#dc2626;font-size:10px;font-weight:700;
+                        padding:2px 8px;border-radius:20px;">Out of Stock</div>
+            {% elif p.stock <= 5 %}
+            <div style="position:absolute;top:10px;left:10px;background:#fef9c3;
+                        color:#b45309;font-size:10px;font-weight:700;
+                        padding:2px 8px;border-radius:20px;">Only {{ p.stock }} left</div>
+            {% endif %}
+
+            <div style="position:absolute;top:10px;right:10px;width:24px;height:24px;
+                        border-radius:50%;background:rgba(26,74,34,0.8);
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:11px;">🕐</div>
+          </div>
+
+          <div style="padding:12px 14px 14px;">
+            {% if p.category %}
+            <div style="font-size:10px;font-weight:600;color:#52b788;
+                        text-transform:uppercase;letter-spacing:0.06em;
+                        margin-bottom:4px;">{{ p.category.name }}</div>
+            {% endif %}
+            <div style="font-size:13.5px;font-weight:600;color:#111;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+                        margin-bottom:6px;">{{ p.name }}</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:16px;font-weight:800;color:#1a4a22;
+                           font-family:'DM Serif Display',serif;">₹{{ p.price }}</span>
+              <span style="font-size:11px;color:#aaa;">View →</span>
+            </div>
+          </div>
+
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
+  </div>
+</section>
+{% endif %}
+
+
+
+{# ── TESTIMONIALS ─────────────────────────────────────────────────── #}
 <div class="container my-5">
-  <h3 class="text-center mb-5 fw-bold" style="color: #28a745;">What Our Clients Say</h3>
-  <div class="row g-4 justify-content-center">
+  <div class="text-center mb-5">
+    <span class="badge bg-success px-3 py-2 mb-2" style="font-size:.8rem;">
+      <i class="bi bi-people-fill me-1"></i> Real Customer Reviews
+    </span>
+    <h3 class="fw-bold" style="color:#1a4a22;">What Our Customers Say</h3>
+    <p class="text-muted">Every review is from a verified GreenMart shopper.</p>
+  </div>
 
-    <!-- Testimonial Card -->
-    <div class="col-md-6 col-lg-4">
-      <div class="testimonial-card p-4 text-center position-relative bg-white rounded-4 shadow-sm">
-        <i class="fa-solid fa-quote-left fa-2x text-success position-absolute top-0 start-50 translate-middle"></i>
-        <p class="mb-4 fst-italic" style="color: #555;">
-          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut elit tellus, luctus nec ullamcorper mattis."
-        </p>
-        <img src="{{ image35 }}" class="img-fluid rounded-circle mb-3" style="width:100px; height:100px; object-fit:cover; border: 3px solid #28a745;">
-        <h6 class="fw-bold">John Doe</h6>
-        <span class="text-muted">Entrepreneur</span>
+  {% if testimonials %}
+  {# ── Testimonials Carousel ── #}
+  <div id="testimonialCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4500">
+    <div class="carousel-inner">
+
+      {% set chunk = 3 %}
+      {% for i in range(0, testimonials|length, chunk) %}
+      <div class="carousel-item {% if i == 0 %}active{% endif %}">
+        <div class="row g-4 justify-content-center px-2">
+
+          {% for t in testimonials[i : i + chunk] %}
+          <div class="col-md-6 col-lg-4">
+            <div class="testimonial-card h-100 p-4 text-center position-relative bg-white rounded-4 shadow-sm"
+                 style="border-top: 4px solid #28a745;">
+
+              {# Quote icon #}
+              <i class="fa-solid fa-quote-left fa-2x text-success position-absolute"
+                 style="top:-18px; left:50%; transform:translateX(-50%);
+                        background:#fff; border-radius:50%; padding:4px 6px;"></i>
+
+              {# Stars #}
+              <div class="mb-3 mt-2">
+                {% for star in range(1,6) %}
+                  <i class="bi bi-star{% if star <= t.rating %}-fill text-warning{% else %} text-muted{% endif %}"></i>
+                {% endfor %}
+              </div>
+
+              {# Headline #}
+              <h6 class="fw-bold mb-2" style="color:#1a4a22;">"{{ t.headline }}"</h6>
+
+              {# Body #}
+              <p class="fst-italic text-muted small mb-3" style="line-height:1.7;">
+                {{ t.body[:200] }}{% if t.body|length > 200 %}…{% endif %}
+              </p>
+
+              {# Badges #}
+              <div class="mb-3 d-flex justify-content-center gap-2 flex-wrap">
+                {% if t.order_id %}
+                  <span class="badge bg-success bg-opacity-10 border border-success">
+                    <i class="bi bi-bag-check me-1"></i>Verified Purchase
+                  </span>
+                {% endif %}
+                {% if t.is_featured %}
+                  <span class="badge bg-warning text-dark">
+                    <i class="bi bi-star-fill me-1"></i>Featured
+                  </span>
+                {% endif %}
+                {% if t.product %}
+                  <span class="badge bg-light text-muted border">
+                    <i class="bi bi-box-seam me-1"></i>{{ t.product.name }}
+                  </span>
+                {% endif %}
+              </div>
+
+              {# Avatar initials + name #}
+              <div class="d-flex align-items-center justify-content-center gap-3 mt-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white"
+                     style="width:48px;height:48px;min-width:48px;font-size:1.2rem;
+                            background:linear-gradient(135deg,#1a4a22,#4caf50);">
+                  {{ (t.display_name or t.user.name)[0].upper() }}
+                </div>
+                <div class="text-start">
+                  <div class="fw-bold" style="color:#333;">{{ t.display_name or t.user.name }}</div>
+                  <small class="text-muted">
+                    {{ t.moderated_at.strftime('%b %Y') if t.moderated_at else 'GreenMart Customer' }}
+                  </small>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          {% endfor %}
+
+        </div>
       </div>
+      {% endfor %}
+
     </div>
 
-    <div class="col-md-6 col-lg-4">
-      <div class="testimonial-card p-4 text-center position-relative bg-white rounded-4 shadow-sm">
-        <i class="fa-solid fa-quote-left fa-2x text-success position-absolute top-0 start-50 translate-middle"></i>
-        <p class="mb-4 fst-italic" style="color: #555;">
-          "Another happy client testimonial goes here. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        </p>
-        <img src="{{ image35 }}" class="img-fluid rounded-circle mb-3" style="width:100px; height:100px; object-fit:cover; border: 3px solid #28a745;">
-        <h6 class="fw-bold">Jane Smith</h6>
-        <span class="text-muted">Designer</span>
-      </div>
-    </div>
+    {# Controls #}
+    <button class="carousel-control-prev custom-arrow prev" type="button"
+            data-bs-target="#testimonialCarousel" data-bs-slide="prev">
+      <i class="bi bi-chevron-left"></i>
+    </button>
+    <button class="carousel-control-next custom-arrow next" type="button"
+            data-bs-target="#testimonialCarousel" data-bs-slide="next">
+      <i class="bi bi-chevron-right"></i>
+    </button>
 
-    <div class="col-md-6 col-lg-4">
-      <div class="testimonial-card p-4 text-center position-relative bg-white rounded-4 shadow-sm">
-        <i class="fa-solid fa-quote-left fa-2x text-success position-absolute top-0 start-50 translate-middle"></i>
-        <p class="mb-4 fst-italic" style="color: #555;">
-          "Yet another testimonial example. Quis ipsum suspendisse ultrices gravida. Risus commodo viverra maecenas accumsan."
-        </p>
-        <img src="{{ image35 }}" class="img-fluid rounded-circle mb-3" style="width:100px; height:100px; object-fit:cover; border: 3px solid #28a745;">
-        <h6 class="fw-bold">Alice Brown</h6>
-        <span class="text-muted">Manager</span>
-      </div>
+    {# Dots #}
+    <div class="carousel-indicators position-relative mt-4" style="bottom:unset;">
+      {% for i in range(0, testimonials|length, 3) %}
+      <button type="button" data-bs-target="#testimonialCarousel" data-bs-slide-to="{{ loop.index0 }}"
+              class="{% if loop.first %}active{% endif %} rounded-circle"
+              style="width:10px;height:10px;background:#28a745;border:none;opacity:.4;">
+      </button>
+      {% endfor %}
     </div>
 
   </div>
+
+  {% else %}
+  {# Empty state — encourage first review #}
+  <div class="text-center py-4">
+    <i class="bi bi-chat-heart" style="font-size:3rem; color:#ccc;"></i>
+    <p class="text-muted mt-2">Be the first to share your experience!</p>
+  </div>
+  {% endif %}
+
+  {# ── CTA to write a testimonial ── #}
+  <div class="text-center mt-5">
+    <div class="card border-0 rounded-4 d-inline-block px-5 py-4 shadow-sm"
+         style="background:linear-gradient(135deg,#e8f5e9,#f1f8e9);">
+      <h5 class="fw-bold mb-1" style="color:#1a4a22;">Shopped with us? 🌿</h5>
+      <p class="text-muted small mb-3">
+        Share your experience and earn
+        <strong class="text-success">reward points</strong>!
+      </p>
+      {% if current_user.is_authenticated and current_user.role == 'customer' %}
+        <a href="{{ url_for('views.submit_testimonial') }}"
+           class="btn btn-success px-4 fw-semibold rounded-3">
+          <i class="bi bi-pencil me-2"></i>Write a Review
+        </a>
+      {% else %}
+        <a href="#" data-bs-toggle="modal" data-bs-target="#loginModal"
+           class="btn btn-success px-4 fw-semibold rounded-3">
+          <i class="bi bi-pencil me-2"></i>Write a Review
+        </a>
+      {% endif %}
+      <a href="{{ url_for('views.testimonials_page') }}"
+         class="btn btn-outline-success px-4 fw-semibold rounded-3 ms-2">
+        <i class="bi bi-chat-quote me-1"></i>View All Reviews
+      </a>
+    </div>
+  </div>
+
 </div>
 
+<div class="container my-5" id="bundleSection" style="display:none;">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <div>
+        <h3 class="fw-bold mb-1" style="color:#1a4a22;">🛍 Bundle Deals</h3>
+        <p class="text-muted mb-0" style="font-size:14px;">Buy together, save more</p>
+      </div>
+      <a href="/bundles" class="btn btn-outline-success btn-sm fw-semibold px-4">View All →</a>
+    </div>
+    <div class="row g-3" id="bundleCards"></div>
+  </div>
+
+  
+
+  <script>
+  (async function loadHomeBundles() {
+    try {
+      const res     = await fetch('/api/bundles');
+      const bundles = await res.json();
+      if (!bundles.length) return;
+
+      const section = document.getElementById('bundleSection');
+      const grid    = document.getElementById('bundleCards');
+      section.style.display = '';
+
+      bundles.slice(0,3).forEach(b => {
+        const typeLabel = {
+          fixed: '💎 Fixed Price', percent: `🔥 ${Math.round(b.savings_pct)}% OFF`,
+          bxgy: `🎁 Buy ${b.buy_qty||'?'} Get ${b.free_qty||'?'}`, free_qty: '📦 Custom Bundle'
+        }[b.deal_type] || b.deal_type;
+
+        const thumbs = b.items.slice(0,3).map(i =>
+          `<img src="${i.image}" style="width:36px;height:36px;border-radius:8px;object-fit:cover;border:2px solid #e5e7eb;" title="${i.name}">`
+        ).join('');
+
+        grid.innerHTML += `
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden" style="border:1.5px solid #d1fae5 !important;">
+              <div style="background:linear-gradient(135deg,#f0fdf4,#d1fae5);padding:18px;display:flex;align-items:center;gap:10px;">
+                <div style="display:flex;gap:4px;">${thumbs}</div>
+                ${b.items.length > 3 ? `<span style="font-size:12px;color:#4b5563;font-weight:700;">+${b.items.length-3} more</span>` : ''}
+              </div>
+              <div class="card-body">
+                <span style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;padding:2px 9px;border-radius:99px;">${typeLabel}</span>
+                <h6 class="fw-bold mt-2 mb-1">${b.name}</h6>
+                <div class="d-flex align-items-center gap-2 mt-2 mb-3">
+                  <span style="font-size:20px;font-weight:900;color:#1a4a22;">₹${Math.round(b.effective_price)}</span>
+                  ${b.mrp_total !== b.effective_price ? `<span style="font-size:13px;color:#9ca3af;text-decoration:line-through;">₹${Math.round(b.mrp_total)}</span>` : ''}
+                  ${b.savings > 0 ? `<span style="font-size:11px;font-weight:700;color:#dc2626;background:#fef2f2;padding:2px 8px;border-radius:99px;">Save ₹${Math.round(b.savings)}</span>` : ''}
+                </div>
+                <a href="/bundles" class="btn btn-success btn-sm w-100 fw-semibold">View Bundle →</a>
+              </div>
+            </div>
+          </div>`;
+      });
+    } catch(e) { console.warn('Bundle load failed:', e); }
+  })();
+  </script>
+
+
+{# ── TRUST BADGES ────────────────────────────────────────────────── #}
 <div class="container-fluid mb-4 my-5 mt-4 bg-light">
   <div class="row text-center justify-content-center g-4">
 
@@ -768,5 +756,28 @@
 
   </div>
 </div>
+
+<script>
+function updatePrice(select, productId, basePrice) {
+  const opt = select.options[select.selectedIndex];
+  const priceEl = document.querySelector('.original-price-' + productId);
+  if (!priceEl) return;
+  if (opt.value) {
+    priceEl.textContent = '₹' + opt.dataset.price;
+    const btn = select.closest('form').querySelector('button[type="submit"]');
+    if (opt.dataset.stock == '0') {
+      btn.disabled = true;
+      btn.textContent = 'Out of Stock';
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Add to Cart';
+    }
+  } else {
+    priceEl.textContent = '₹' + basePrice;
+  }
+}
+</script>
+
+
 
 {% endblock %}

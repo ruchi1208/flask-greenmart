@@ -1,0 +1,172 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Contact Messages{% endblock %}
+{% block page_title %}Contact Messages{% endblock %}
+{% block page_subtitle %}Messages received from the contact form{% endblock %}
+
+{% block content %}
+
+<!-- Stats Row -->
+<div class="stat-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));">
+  <div class="stat-card">
+    <div class="stat-icon">📩</div>
+    <div class="stat-value">{{ messages|length }}</div>
+    <div class="stat-label">Total Messages</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🔴</div>
+    <div class="stat-value">{{ messages|selectattr('is_read','eq',false)|list|length }}</div>
+    <div class="stat-label">Unread</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">✅</div>
+    <div class="stat-value">{{ messages|selectattr('is_read','eq',true)|list|length }}</div>
+    <div class="stat-label">Read</div>
+  </div>
+</div>
+
+<!-- Messages Table -->
+<div class="content-card">
+  <div class="content-card-header">
+    <h5><i class="bi bi-envelope me-2"></i>All Messages</h5>
+    <div class="d-flex gap-2">
+      <!-- Filter tabs -->
+      <a href="{{ url_for('admin.messages') }}" 
+         class="btn-admin-ghost {{ 'btn-admin-primary' if not request.args.get('filter') else '' }}" style="padding:6px 14px; font-size:12px;">
+        All
+      </a>
+      <a href="{{ url_for('admin.messages', filter='unread') }}" 
+         class="btn-admin-ghost {{ 'btn-admin-primary' if request.args.get('filter') == 'unread' else '' }}" style="padding:6px 14px; font-size:12px;">
+        Unread
+      </a>
+    </div>
+  </div>
+
+  <div class="content-card-body p-0">
+    {% if messages %}
+    <div class="table-responsive">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Subject</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for msg in messages %}
+          <tr style="{{ 'font-weight:600; background:#f0fdf6;' if not msg.is_read else '' }}">
+            <td style="color:var(--text-light); font-size:12px;">{{ msg.id }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div style="width:32px; height:32px; border-radius:8px; background:var(--green-pale); color:var(--green-mid); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;">
+                  {{ msg.name[0].upper() }}
+                </div>
+                {{ msg.name }}
+              </div>
+            </td>
+            <td><a href="mailto:{{ msg.email }}" style="color:var(--green-mid); text-decoration:none;">{{ msg.email }}</a></td>
+            <td>{{ msg.phone or '—' }}</td>
+            <td>
+              <span class="chip chip-info">{{ msg.subject or 'General' }}</span>
+            </td>
+            <td style="font-size:12px; color:var(--text-light);">{{ msg.created_at.strftime('%d %b %Y, %I:%M %p') }}</td>
+            <td>
+              {% if msg.is_read %}
+                <span class="chip chip-muted">Read</span>
+              {% else %}
+                <span class="chip chip-danger">Unread</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                <!-- View Modal Trigger -->
+                <button class="btn-admin-ghost" style="padding:5px 10px; font-size:12px;"
+                  data-bs-toggle="modal" data-bs-target="#msgModal{{ msg.id }}">
+                  <i class="bi bi-eye"></i> View
+                </button>
+                <!-- Delete -->
+                <a href="{{ url_for('admin.delete_message', id=msg.id) }}"
+                   onclick="return confirm('Delete this message?')"
+                   class="btn-admin-ghost" style="padding:5px 10px; font-size:12px; color:#dc3545; border-color:#fca5a5;">
+                  <i class="bi bi-trash"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% else %}
+    <div class="text-center py-5" style="color:var(--text-light);">
+      <i class="bi bi-envelope-open" style="font-size:48px; display:block; margin-bottom:12px; opacity:.4;"></i>
+      <div style="font-size:15px; font-weight:600;">No messages yet</div>
+      <div style="font-size:13px; margin-top:4px;">Messages from the contact form will appear here.</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Modals for each message ── -->
+{% for msg in messages %}
+<div class="modal fade" id="msgModal{{ msg.id }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow" style="border-radius:16px; overflow:hidden;">
+
+      <div class="modal-header border-0 pb-0" style="background:var(--green-ultra); padding:20px 24px 16px;">
+        <div>
+          <div style="font-family:'Syne',sans-serif; font-weight:700; font-size:16px; color:var(--green-mid);">
+            {{ msg.subject or 'Message' }}
+          </div>
+          <div style="font-size:12px; color:var(--text-light); margin-top:2px;">
+            {{ msg.created_at.strftime('%d %b %Y at %I:%M %p') }}
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body" style="padding:20px 24px;">
+        <!-- Sender Info -->
+        <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded-3" style="background:var(--green-ultra); border:1px solid var(--border);">
+          <div style="width:44px; height:44px; border-radius:10px; background:var(--green-pale); color:var(--green-mid); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; font-family:'Syne',sans-serif; flex-shrink:0;">
+            {{ msg.name[0].upper() }}
+          </div>
+          <div>
+            <div style="font-weight:700; font-size:14px;">{{ msg.name }}</div>
+            <div style="font-size:12px; color:var(--text-light);">
+              <a href="mailto:{{ msg.email }}" style="color:var(--green-mid); text-decoration:none;">{{ msg.email }}</a>
+              {% if msg.phone %} · <a href="tel:{{ msg.phone }}" style="color:var(--green-mid); text-decoration:none;">{{ msg.phone }}</a>{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Message Body -->
+        <div style="font-size:14px; line-height:1.75; color:var(--text-dark); white-space:pre-wrap;">{{ msg.message }}</div>
+      </div>
+
+      <div class="modal-footer border-0 pt-0" style="padding:12px 24px 20px; gap:8px;">
+        <a href="mailto:{{ msg.email }}?subject=Re: {{ msg.subject or 'Your message' }}" 
+           class="btn-admin-primary" style="font-size:13px;">
+          <i class="bi bi-reply"></i> Reply via Email
+        </a>
+        {% if not msg.is_read %}
+        <a href="{{ url_for('admin.mark_read', id=msg.id) }}" class="btn-admin-ghost" style="font-size:13px;">
+          <i class="bi bi-check2"></i> Mark as Read
+        </a>
+        {% endif %}
+        <button class="btn-admin-ghost" data-bs-dismiss="modal" style="font-size:13px;">Close</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

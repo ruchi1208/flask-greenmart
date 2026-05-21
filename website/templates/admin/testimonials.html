@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% block title %}Testimonials | Admin{% endblock %}
+{% block content %}
+
+<div class="container-fluid py-4">
+
+  {# ── Header ── #}
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <h3 class="fw-bold mb-0" style="color:#1a4a22;">
+      <i class="bi bi-chat-quote-fill me-2"></i>Testimonials
+    </h3>
+    <div class="d-flex gap-2 align-items-center">
+      {# Reward config badge #}
+      <span class="badge bg-success fs-6 px-3 py-2">
+        <i class="bi bi-coin me-1"></i>
+        Reward: {{ config.reward_points if config else 50 }} pts/testimonial
+      </span>
+      <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#configModal">
+        <i class="bi bi-gear-fill"></i> Configure Reward
+      </button>
+    </div>
+  </div>
+
+  {# ── Filter Tabs ── #}
+  <ul class="nav nav-pills mb-4 gap-2 flex-wrap">
+    {% for s, label, color in [
+        ('all','All','secondary'),
+        ('pending','⏳ Pending','warning'),
+        ('approved','✅ Approved','success'),
+        ('rejected','❌ Rejected','danger')
+    ] %}
+    <li class="nav-item">
+      <a href="{{ url_for('admin.manage_testimonials', status=s) }}"
+         class="nav-link {% if status_filter==s %}active bg-{{ color }} text-white{% else %}text-{{ color }}{% endif %} fw-semibold border border-{{ color }}">
+        {{ label }}
+        <span class="badge bg-white text-dark ms-1">{{ counts[s] }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+
+  {# ── Flash Messages ── #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }} alert-dismissible fade show">{{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  {# ── Cards Grid ── #}
+  {% if testimonials %}
+  <div class="row g-4">
+    {% for t in testimonials %}
+    <div class="col-md-6 col-xl-4">
+      <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden
+        {% if t.status=='pending' %}border-start border-warning border-4
+        {% elif t.status=='approved' %}border-start border-success border-4
+        {% else %}border-start border-danger border-4{% endif %}">
+
+        {# Card Header #}
+        <div class="card-header bg-white d-flex justify-content-between align-items-start py-3 px-4">
+          <div>
+            <span class="fw-bold">{{ t.display_name or t.user.name }}</span>
+            <small class="text-muted d-block">{{ t.user.email }}</small>
+          </div>
+          <div class="d-flex gap-1 flex-wrap justify-content-end">
+            {# Status badge #}
+            {% if t.status=='pending' %}
+              <span class="badge bg-warning text-dark">⏳ Pending</span>
+            {% elif t.status=='approved' %}
+              <span class="badge bg-success">✅ Approved</span>
+            {% else %}
+              <span class="badge bg-danger">❌ Rejected</span>
+            {% endif %}
+            {# Featured badge #}
+            {% if t.is_featured %}
+              <span class="badge bg-warning text-dark">⭐ Featured</span>
+            {% endif %}
+            {# Verified badge #}
+            {% if t.order_id %}
+              <span class="badge bg-info text-white">🛒 Verified</span>
+            {% endif %}
+            {# Reward badge #}
+            {% if t.reward_given %}
+              <span class="badge bg-success bg-opacity-75">🎁 Rewarded</span>
+            {% endif %}
+          </div>
+        </div>
+
+        {# Card Body #}
+        <div class="card-body px-4 py-3">
+          {# Stars #}
+          <div class="mb-2">
+            {% for i in range(1,6) %}
+              <i class="bi bi-star{% if i <= t.rating %}-fill text-warning{% else %} text-muted{% endif %}"></i>
+            {% endfor %}
+            <small class="text-muted ms-1">{{ t.rating }}/5</small>
+          </div>
+
+          <h6 class="fw-bold mb-1">{{ t.headline }}</h6>
+          <p class="text-muted small mb-2" style="line-height:1.5;">{{ t.body }}</p>
+
+          {% if t.product %}
+            <small class="text-success"><i class="bi bi-box-seam me-1"></i>About: {{ t.product.name }}</small><br>
+          {% endif %}
+          {% if t.order %}
+            <small class="text-info"><i class="bi bi-bag-check me-1"></i>Order #{{ t.order.tracking_id or t.order_id }}</small><br>
+          {% endif %}
+          {% if t.admin_note %}
+            <div class="alert alert-light border mt-2 py-2 small">
+              <i class="bi bi-info-circle me-1"></i><strong>Admin note:</strong> {{ t.admin_note }}
+            </div>
+          {% endif %}
+
+          <small class="text-muted d-block mt-2">
+            <i class="bi bi-clock me-1"></i>Submitted {{ t.created_at.strftime('%d %b %Y, %H:%M') }}
+            {% if t.moderated_at %}
+              · Reviewed {{ t.moderated_at.strftime('%d %b %Y') }}
+            {% endif %}
+          </small>
+        </div>
+
+        {# Card Actions #}
+        <div class="card-footer bg-white border-0 px-4 pb-3">
+          <div class="d-flex gap-2 flex-wrap">
+
+            {# APPROVE #}
+            {% if t.status != 'approved' %}
+            <button class="btn btn-sm btn-success" data-bs-toggle="modal"
+                    data-bs-target="#approveModal{{ t.id }}">
+              <i class="bi bi-check-circle me-1"></i>Approve
+            </button>
+            {% endif %}
+
+            {# REJECT #}
+            {% if t.status != 'rejected' %}
+            <button class="btn btn-sm btn-warning" data-bs-toggle="modal"
+                    data-bs-target="#rejectModal{{ t.id }}">
+              <i class="bi bi-x-circle me-1"></i>Reject
+            </button>
+            {% endif %}
+
+            {# FEATURE TOGGLE #}
+            {% if t.status == 'approved' %}
+            <form action="{{ url_for('admin.feature_testimonial', tid=t.id) }}" method="POST">
+              <button class="btn btn-sm btn-outline-warning">
+                {% if t.is_featured %}
+                  <i class="bi bi-star-fill me-1"></i>Unfeature
+                {% else %}
+                  <i class="bi bi-star me-1"></i>Feature
+                {% endif %}
+              </button>
+            </form>
+            {% endif %}
+
+            {# DELETE #}
+            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+                    data-bs-target="#deleteModal{{ t.id }}">
+              <i class="bi bi-trash me-1"></i>Delete
+            </button>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Approve Modal ── #}
+    <div class="modal fade" id="approveModal{{ t.id }}" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content rounded-4">
+          <div class="modal-header bg-success text-white rounded-top-4">
+            <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Approve Testimonial</h5>
+            <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <form action="{{ url_for('admin.approve_testimonial', tid=t.id) }}" method="POST">
+            <div class="modal-body">
+              <p class="text-muted">By approving, the testimonial goes live on the homepage and
+                <strong>{{ config.reward_points if config else 50 }} reward points</strong>
+                will be credited to <strong>{{ t.user.name }}</strong>.</p>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Override Display Name (optional)</label>
+                <input type="text" name="display_name" class="form-control"
+                       placeholder="Leave blank to use: {{ t.user.name }}"
+                       value="{{ t.display_name or '' }}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Admin Note (optional)</label>
+                <textarea name="admin_note" class="form-control" rows="2"
+                          placeholder="Internal note visible to admin only..."></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-success px-4">✅ Approve & Credit Points</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {# ── Reject Modal ── #}
+    <div class="modal fade" id="rejectModal{{ t.id }}" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content rounded-4">
+          <div class="modal-header bg-warning text-dark rounded-top-4">
+            <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>Reject Testimonial</h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <form action="{{ url_for('admin.reject_testimonial', tid=t.id) }}" method="POST">
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Reason for rejection <span class="text-danger">*</span></label>
+                <textarea name="admin_note" class="form-control" rows="3" required
+                          placeholder="e.g. Contains inappropriate language, off-topic, duplicate..."></textarea>
+                <small class="text-muted">This note is stored for admin reference only.</small>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-warning px-4">❌ Reject</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {# ── Delete Modal ── #}
+    <div class="modal fade" id="deleteModal{{ t.id }}" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content rounded-4">
+          <div class="modal-header bg-danger text-white rounded-top-4">
+            <h5 class="modal-title"><i class="bi bi-trash me-2"></i>Delete Testimonial</h5>
+            <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <form action="{{ url_for('admin.delete_testimonial', tid=t.id) }}" method="POST">
+            <div class="modal-body">
+              <p>Are you sure you want to permanently delete this testimonial by
+                <strong>{{ t.user.name }}</strong>?</p>
+              <div class="alert alert-warning small">
+                ⚠️ Reward points already credited will <strong>NOT</strong> be reversed automatically.
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-danger px-4">🗑️ Delete</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="text-center py-5">
+    <i class="bi bi-chat-quote fa-3x text-muted" style="font-size:4rem;"></i>
+    <p class="text-muted mt-3 fs-5">No testimonials found for this filter.</p>
+  </div>
+  {% endif %}
+
+</div>
+
+
+{# ── Reward Config Modal ── #}
+<div class="modal fade" id="configModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content rounded-4">
+      <div class="modal-header" style="background:#1a4a22; color:white;">
+        <h5 class="modal-title"><i class="bi bi-coin me-2"></i>Testimonial Reward Settings</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="{{ url_for('admin.update_testimonial_config') }}" method="POST">
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Reward Points Per Approved Testimonial</label>
+          <input type="number" name="reward_points" class="form-control form-control-lg"
+                 value="{{ config.reward_points if config else 50 }}" min="0" max="9999" required>
+          <small class="text-muted">Set to 0 to disable rewards. Current: <strong>{{ config.reward_points if config else 50 }} pts</strong></small>
+
+          <div class="alert alert-info mt-3 small">
+            <i class="bi bi-info-circle me-1"></i>
+            Points are credited automatically the moment you approve a testimonial.
+            Existing approvals are not affected by this change.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success px-4">💾 Save Setting</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

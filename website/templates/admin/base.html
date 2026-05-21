@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Admin Panel{% endblock %} — FreshMart</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --green-dark: #0f3d1a;
+      --green-mid: #1a5c2a;
+      --green-main: #2d6a4f;
+      --green-light: #52b788;
+      --green-pale: #d8f3dc;
+      --green-ultra: #f0fdf6;
+      --accent: #2db96a;
+      --accent-hover: #1ea858;
+      --sidebar-w: 260px;
+      --topbar-h: 64px;
+      --text-dark: #1a1a2e;
+      --text-mid: #4a4a6a;
+      --text-light: #8888aa;
+      --bg-page: #f4f7f5;
+      --card-bg: #ffffff;
+      --border: #e4ede7;
+      --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg-page);
+      color: var(--text-dark);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .admin-shell {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--green-dark);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 1000;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+    }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      text-decoration: none;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent), #1ea858);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(45, 185, 106, 0.4);
+    }
+
+    .brand-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 18px;
+      color: white;
+      line-height: 1;
+    }
+
+    .brand-sub {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.45);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .nav-section {
+      padding: 20px 12px 8px;
+    }
+
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.3);
+      padding: 0 8px;
+      margin-bottom: 6px;
+    }
+
+    .nav-item-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      color: rgba(255, 255, 255, 0.65);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: all 0.18s ease;
+      margin-bottom: 2px;
+      position: relative;
+    }
+
+    .nav-item-link:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+    }
+
+    .nav-item-link.active {
+      background: linear-gradient(90deg, rgba(45, 185, 106, 0.25), rgba(45, 185, 106, 0.08));
+      color: #6ee89c;
+      font-weight: 600;
+    }
+
+    .nav-item-link.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3px;
+      background: var(--accent);
+      border-radius: 0 2px 2px 0;
+    }
+
+    .nav-item-link i {
+      font-size: 16px;
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      background: #dc3545;
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .nav-badge.yellow {
+      background: #f59e0b;
+      color: #1a1a1a;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-footer a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      color: rgba(255, 255, 255, 0.5);
+      text-decoration: none;
+      font-size: 13px;
+      transition: all 0.18s;
+    }
+
+    .sidebar-footer a:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #ff8080;
+    }
+
+    .sidebar-footer a i {
+      font-size: 16px;
+    }
+
+    /* ── MAIN ── */
+    .main-content {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .topbar {
+      height: var(--topbar-h);
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .topbar-toggle {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 22px;
+      color: var(--text-mid);
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .topbar-breadcrumb {
+      flex: 1;
+    }
+
+    .topbar-breadcrumb .page-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text-dark);
+      line-height: 1;
+    }
+
+    .topbar-breadcrumb .page-sub {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 2px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topbar-icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-page);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-mid);
+      font-size: 16px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .topbar-icon-btn:hover {
+      background: var(--green-pale);
+      color: var(--green-mid);
+      border-color: var(--green-light);
+    }
+
+    .topbar-icon-btn .dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 8px;
+      height: 8px;
+      background: #dc3545;
+      border-radius: 50%;
+      border: 2px solid white;
+    }
+
+    .topbar-avatar {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--green-mid), var(--accent));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .page-body {
+      flex: 1;
+      padding: 28px;
+    }
+
+    .flash-container {
+      padding: 0 28px;
+      padding-top: 16px;
+    }
+
+    .flash-msg {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .flash-success {
+      background: #d8f3dc;
+      color: #1a5c2a;
+      border: 1px solid #b7e4c7;
+    }
+
+    .flash-danger {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    .flash-warning {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+
+    .flash-info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+
+    .flash-msg .flash-close {
+      margin-left: auto;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      opacity: 0.6;
+      color: inherit;
+      transition: opacity 0.15s;
+    }
+
+    .flash-msg .flash-close:hover {
+      opacity: 1;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--green-main), var(--accent));
+    }
+
+    .stat-card .stat-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--green-ultra);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 14px;
+    }
+
+    .stat-card .stat-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--green-mid);
+      line-height: 1;
+    }
+
+    .stat-card .stat-label {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .content-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 24px;
+    }
+
+    .content-card-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .content-card-header h5 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--green-mid);
+      margin: 0;
+    }
+
+    .content-card-body {
+      padding: 24px;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .admin-table thead th {
+      background: var(--green-ultra);
+      color: var(--green-mid);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      padding: 11px 16px;
+      border-bottom: 2px solid var(--green-pale);
+      white-space: nowrap;
+    }
+
+    .admin-table tbody td {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-dark);
+      vertical-align: middle;
+    }
+
+    .admin-table tbody tr:hover td {
+      background: var(--green-ultra);
+    }
+
+    .admin-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .chip-success {
+      background: #d8f3dc;
+      color: #1a5c2a;
+    }
+
+    .chip-danger {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .chip-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .chip-info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .chip-muted {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .btn-admin-primary {
+      background: linear-gradient(135deg, var(--green-mid), var(--accent));
+      color: white;
+      border: none;
+      padding: 9px 20px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-admin-primary:hover {
+      background: linear-gradient(135deg, var(--green-dark), var(--green-main));
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(45, 185, 106, 0.35);
+    }
+
+    .btn-admin-ghost {
+      background: transparent;
+      color: var(--green-mid);
+      border: 1.5px solid var(--green-light);
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-admin-ghost:hover {
+      background: var(--green-ultra);
+      color: var(--green-dark);
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      backdrop-filter: blur(2px);
+    }
+
+    .admin-footer {
+      padding: 16px 28px;
+      border-top: 1px solid var(--border);
+      background: var(--card-bg);
+      font-size: 12px;
+      color: var(--text-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .admin-footer a {
+      color: var(--green-light);
+      text-decoration: none;
+    }
+
+    .admin-footer a:hover {
+      color: var(--green-mid);
+    }
+
+    @media (max-width: 991px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main-content {
+        margin-left: 0;
+      }
+
+      .topbar-toggle {
+        display: flex;
+      }
+
+      .sidebar-overlay.show {
+        display: block;
+      }
+
+      .page-body {
+        padding: 20px 16px;
+      }
+
+      .topbar {
+        padding: 0 16px;
+      }
+
+      .flash-container {
+        padding: 12px 16px 0;
+      }
+
+      .admin-footer {
+        padding: 12px 16px;
+        flex-direction: column;
+        gap: 4px;
+        text-align: center;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+
+  <div class="admin-shell">
+
+    <!-- ══ SIDEBAR ══ -->
+    <aside class="sidebar" id="sidebar">
+
+      <a href="{{ url_for('admin.dashboard') }}" class="sidebar-brand">
+        <div class="brand-icon">🛒</div>
+        <div>
+          <div class="brand-text">FreshMart</div>
+          <div class="brand-sub">Admin Panel</div>
+        </div>
+      </a>
+
+      <!-- Main -->
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+        <a href="{{ url_for('admin.dashboard') }}"
+          class="nav-item-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+          <i class="bi bi-grid-1x2"></i> Dashboard
+        </a>
+      </div>
+
+      <!-- Catalog -->
+      <div class="nav-section">
+        <div class="nav-section-label">Catalog</div>
+        <a href="{{ url_for('admin.manage_products') }}"
+          class="nav-item-link {% if 'product' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-box-seam"></i> Products
+        </a>
+        <a href="{{ url_for('admin.manage_categories') }}"
+          class="nav-item-link {% if 'categor' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-tags"></i> Categories
+        </a>
+      </div>
+
+      <!-- Orders -->
+      <div class="nav-section">
+        <div class="nav-section-label">Orders</div>
+        <a href="{{ url_for('admin.manage_orders') }}"
+          class="nav-item-link {% if request.endpoint == 'admin.manage_orders' %}active{% endif %}">
+          <i class="bi bi-bag-check"></i> All Orders
+        </a>
+        <a href="{{ url_for('admin.pending_payments') }}"
+          class="nav-item-link {% if request.endpoint == 'admin.pending_payments' %}active{% endif %}">
+          <i class="bi bi-clock-history"></i> UPI Pending
+          {% if pending_upi_count is defined and pending_upi_count %}
+          <span class="nav-badge yellow">{{ pending_upi_count }}</span>
+          {% endif %}
+        </a>
+        <a href="{{ url_for('views.admin_cancelled_orders') }}"
+          class="nav-item-link {% if 'cancelled' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-x-circle"></i> Cancelled Orders
+          {% if cancel_flagged_count is defined and cancel_flagged_count %}
+          <span class="nav-badge">{{ cancel_flagged_count }}</span>
+          {% endif %}
+        </a>
+      </div>
+
+      <!-- Marketing -->
+      <div class="nav-section">
+        <div class="nav-section-label">Marketing</div>
+        <a href="{{ url_for('admin.manage_coupons') }}"
+          class="nav-item-link {% if 'coupon' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-ticket-perforated"></i> Coupons
+        </a>
+        <a href="{{ url_for('admin.newsletter') }}"
+          class="nav-item-link {% if 'newsletter' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-envelope-paper"></i> Newsletter
+        </a>
+        <a href="{{ url_for('admin.manage_delivery_zones') }}"
+          class="nav-item-link {% if 'delivery' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-geo-alt"></i> Delivery Zones
+        </a>
+        <a href="{{ url_for('admin.manage_flash_sales') }}"
+        class="nav-item-link {% if 'flash_sale' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-lightning-charge"></i> Flash Sales
+        </a>
+        <!-- Admin sidebar ma paste karo -->
+        <a href="{{ url_for('admin.manage_testimonials') }}">
+          <i class="bi bi-chat-quote-fill"></i> Testimonials
+        </a>
+
+        <a href="{{ url_for('admin.admin_rewards') }}">
+          <i class="bi bi-wallet2"></i> Reward Wallets
+        </a>
+        <a href="{{ url_for('admin.manage_product_sales') }}" class="nav-link">
+  <i class="bi bi-tag-fill me-2"></i> Product Sales
+</a>
+<a href="{{ url_for('admin.manage_bundles') }}" class="nav-item-link">
+  <i class="bi bi-boxes"></i> Bundle Deals
+</a>
+
+      </div>
+
+      <!-- System -->
+      <div class="nav-section">
+        <div class="nav-section-label">System</div>
+        <a href="{{ url_for('admin.manage_users') }}"
+          class="nav-item-link {% if 'user' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-people"></i> Users
+        </a>
+        <a href="{{ url_for('admin.reports') }}"
+          class="nav-item-link {% if 'report' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-bar-chart-line"></i> Reports
+        </a>
+
+        <!-- ✅ NEW: Contact Messages -->
+        <a href="{{ url_for('admin.messages') }}"
+          class="nav-item-link {% if 'message' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-envelope"></i> Messages
+          {% if unread_messages_count is defined and unread_messages_count %}
+          <span class="nav-badge">{{ unread_messages_count }}</span>
+          {% endif %}
+        </a>
+
+        <a href="{{ url_for('admin.settings') }}"
+          class="nav-item-link {% if 'setting' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-gear"></i> Settings
+        </a>
+      </div>
+
+      <div class="sidebar-footer">
+        <a href="{{ url_for('admin.view_store') }}"
+          class="nav-item-link {% if 'view_store' in request.endpoint %}active{% endif %}">
+          <i class="bi bi-shop-window"></i> View Store
+        </a>
+        <a href="{{ url_for('auth.logout') }}" style="margin-top:4px;">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+      </div>
+
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <!-- ══ MAIN ══ -->
+    <div class="main-content">
+
+      <header class="topbar">
+        <button class="topbar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+        <div class="topbar-breadcrumb">
+          <div class="page-title">{% block page_title %}Dashboard{% endblock %}</div>
+          <div class="page-sub">{% block page_subtitle %}FreshMart Admin Panel{% endblock %}</div>
+        </div>
+        <div class="topbar-actions">
+          <a href="{{ url_for('views.home') }}" target="_blank" class="topbar-icon-btn" title="View Store">
+            <i class="bi bi-shop"></i>
+          </a>
+          <a href="{{ url_for('admin.messages') }}" class="topbar-icon-btn" title="Messages">
+            <i class="bi bi-envelope"></i>
+            {% if unread_messages_count is defined and unread_messages_count %}
+            <span class="dot"></span>
+            {% endif %}
+          </a>
+          <a href="{{ url_for('admin.pending_payments') }}" class="topbar-icon-btn" title="Pending Payments">
+            <i class="bi bi-bell"></i>
+            {% if pending_upi_count is defined and pending_upi_count %}
+            <span class="dot"></span>
+            {% endif %}
+          </a>
+          <div class="topbar-avatar" title="{{ current_user.name if current_user else 'Admin' }}">
+            {{ (current_user.name[0] | upper) if current_user and current_user.name else 'A' }}
+          </div>
+        </div>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=True) %}
+      {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+        <div class="flash-msg flash-{{ category if category in ['success','danger','warning','info'] else 'info' }}">
+          <i
+            class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+          {{ message }}
+          <button class="flash-close" onclick="this.parentElement.remove()">✕</button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <main class="page-body">
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="admin-footer">
+        <span>© 2025 <strong>FreshMart</strong>. All rights reserved.</span>
+        <span>Logged in as <a href="#">{{ current_user.name if current_user else 'Admin' }}</a></span>
+      </footer>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      const ov = document.getElementById('sidebarOverlay');
+      sb.classList.toggle('open');
+      ov.classList.toggle('show');
+      document.body.style.overflow = sb.classList.contains('open') ? 'hidden' : '';
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebarOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+    document.querySelectorAll('.flash-msg').forEach(el => {
+      setTimeout(() => {
+        el.style.transition = 'opacity 0.4s, transform 0.4s';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-8px)';
+        setTimeout(() => el.remove(), 400);
+      }, 5000);
+    });
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+
+</html>

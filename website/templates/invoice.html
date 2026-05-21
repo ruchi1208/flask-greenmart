@@ -3,184 +3,523 @@
 <head>
 <meta charset="UTF-8">
 <title>Invoice - GreenMart</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-body {
-    font-family: 'Segoe UI', sans-serif;
-    background: #f4f6f8;
-    padding: 30px;
-}
+  :root {
+    --green-deep: #0d2b1a;
+    --green-mid:  #1a5c35;
+    --green-fresh:#2ecc71;
+    --green-light:#d4f5e2;
+    --gold:       #c9a84c;
+    --cream:      #faf8f3;
+    --ink:        #1a1a1a;
+    --muted:      #7a7a6e;
+  }
 
-.invoice-box {
-    max-width: 900px;
-    margin: auto;
-    background: #fff;
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #e8ede9;
+    min-height: 100vh;
     display: flex;
-    border-radius: 16px;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .page {
+    width: 860px;
+    background: var(--cream);
+    border-radius: 4px;
     overflow: hidden;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.1);
-}
+    box-shadow: 0 30px 80px rgba(0,0,0,0.18);
+    position: relative;
+  }
 
-/* LEFT SIDEBAR */
-.sidebar {
-    width: 260px;
-    background: linear-gradient(180deg, #2ecc71, #27ae60);
-    color: #fff;
-    padding: 30px;
-}
-
-.sidebar h2 {
-    margin: 0;
-}
-
-.sidebar p {
-    font-size: 14px;
-    margin-top: 8px;
-}
-
-/* RIGHT CONTENT */
-.content {
-    flex: 1;
-    padding: 30px;
-}
-
-.header {
+  /* ── TOP BAND ── */
+  .top-band {
+    background: var(--green-deep);
+    padding: 36px 48px;
     display: flex;
     justify-content: space-between;
-    margin-bottom: 20px;
-}
+    align-items: flex-end;
+    position: relative;
+    overflow: hidden;
+  }
 
-.header h1 {
-    margin: 0;
-    color: #2c3e50;
-}
+  .top-band::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    border: 40px solid rgba(46,204,113,0.08);
+  }
 
-.badge {
-    background: #27ae60;
-    color: white;
-    padding: 6px 14px;
-    border-radius: 20px;
+  .top-band::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; left: 40%;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: rgba(46,204,113,0.05);
+  }
+
+  .brand {
+    z-index: 1;
+  }
+
+  .brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+
+  .brand-leaf {
+    display: inline-block;
+    color: var(--green-fresh);
+    margin-right: 4px;
+  }
+
+  .brand-tagline {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .invoice-meta {
+    text-align: right;
+    z-index: 1;
+  }
+
+  .invoice-label {
+    font-family: 'Playfair Display', serif;
+    font-size: 42px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.08);
+    letter-spacing: 6px;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .invoice-number {
+    font-size: 13px;
+    color: var(--green-fresh);
+    letter-spacing: 2px;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .invoice-date {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 3px;
+  }
+
+  /* ── STATUS STRIP ── */
+  .status-strip {
+    background: var(--green-mid);
+    padding: 10px 48px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green-fresh);
+    box-shadow: 0 0 8px var(--green-fresh);
+  }
+
+  .status-text {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .status-value {
+    font-size: 11px;
+    color: #fff;
+    font-weight: 500;
+    letter-spacing: 1px;
+  }
+
+  /* ── BODY ── */
+  .body {
+    padding: 40px 48px;
+  }
+
+  /* ── ADDRESSES ── */
+  .addresses {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 40px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid #e2ddd4;
+  }
+
+  .addr-block label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--green-mid);
+    font-weight: 500;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .addr-block .val {
     font-size: 14px;
-}
+    color: var(--ink);
+    line-height: 1.7;
+    font-weight: 300;
+  }
 
-/* TABLE */
-table {
+  .addr-block .val strong {
+    display: block;
+    font-weight: 500;
+    color: var(--green-deep);
+    margin-bottom: 2px;
+  }
+
+  /* ── TABLE ── */
+  .items-section {
+    margin-bottom: 32px;
+  }
+
+  .section-heading {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
-}
+  }
 
-th {
-    background: #f0f3f5;
+  thead tr {
+    border-bottom: 2px solid var(--green-deep);
+  }
+
+  thead th {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--green-mid);
+    font-weight: 500;
+    padding: 0 12px 12px;
     text-align: left;
-    padding: 12px;
-}
+  }
 
-td {
-    padding: 12px;
-    border-bottom: 1px solid #eee;
-}
-
-/* TOTAL */
-.total-box {
-    margin-top: 25px;
+  thead th:last-child,
+  thead th:nth-child(2),
+  thead th:nth-child(3) {
     text-align: right;
-}
+  }
 
-.total-box p {
-    margin: 4px 0;
-}
+  tbody tr {
+    border-bottom: 1px solid #ede9e0;
+    transition: background 0.15s;
+  }
 
-.grand {
-    font-size: 22px;
-    color: #27ae60;
-    font-weight: bold;
-}
+  tbody tr:last-child { border-bottom: none; }
 
-.footer {
-    margin-top: 30px;
-    text-align: center;
-    color: #888;
-}
-.download-btn {
-    display: inline-block;
-    margin-top: 20px;
-    padding: 12px 22px;
-    background: linear-gradient(135deg, #2ecc71, #27ae60);
-    color: white;
+  tbody td {
+    padding: 14px 12px;
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 300;
+  }
+
+  tbody td:last-child,
+  tbody td:nth-child(2),
+  tbody td:nth-child(3) {
+    text-align: right;
+  }
+
+  tbody td:first-child {
+    font-weight: 500;
+    color: var(--green-deep);
+  }
+
+  /* ── TOTALS ── */
+  .totals-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e2ddd4;
+  }
+
+  .totals-box {
+    width: 280px;
+  }
+
+  .total-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .total-line span:last-child { color: var(--ink); font-weight: 400; }
+
+  .total-divider {
+    border: none;
+    border-top: 1px dashed #ccc;
+    margin: 10px 0;
+  }
+
+  .grand-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    background: var(--green-deep);
+    border-radius: 8px;
+    margin-top: 10px;
+  }
+
+  .grand-total .label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .grand-total .amount {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--green-fresh);
+  }
+
+  /* ── DECORATIVE LEAF WATERMARK ── */
+  .watermark {
+    position: absolute;
+    right: -30px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 280px;
+    color: rgba(46,204,113,0.04);
+    pointer-events: none;
+    user-select: none;
+    line-height: 1;
+  }
+
+  /* ── FOOTER ── */
+  .invoice-footer {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid #e2ddd4;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-note {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+
+  .footer-note strong {
+    display: block;
+    color: var(--green-mid);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--green-deep);
+    color: #fff;
     text-decoration: none;
-    border-radius: 30px;
-    font-weight: 600;
-    box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: background 0.2s;
+  }
 
-.download-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-}
+  .download-btn:hover { background: var(--green-mid); }
 
+  .download-btn svg {
+    width: 14px; height: 14px;
+    stroke: var(--green-fresh);
+  }
+
+  /* ── BOTTOM ACCENT ── */
+  .bottom-accent {
+    height: 5px;
+    background: linear-gradient(90deg, var(--green-deep), var(--green-fresh), var(--gold));
+  }
+
+  @media print {
+    body { background: white; padding: 0; }
+    .page { box-shadow: none; }
+    .download-btn { display: none; }
+  }
 </style>
 </head>
-
 <body>
 
-<div class="invoice-box">
+<div class="page">
+  <span class="watermark">🌿</span>
 
-    <!-- LEFT -->
-    <div class="sidebar">
-        <h2>GreenMart</h2>
-        <p>Fresh & Organic Store</p>
-        <hr>
-        <p><b>Invoice:</b> ORD{{ order.id }}</p>
-        <p><b>Date:</b> {{ order.created_at.strftime('%d %b %Y') }}</p>
-        <br>
-        <p><b>Customer</b></p>
-        <p>{{ user.name }}<br>{{ user.email }}</p>
+  <!-- TOP BAND -->
+  <div class="top-band">
+    <div class="brand">
+      <div class="brand-name"><span class="brand-leaf">🌿</span>GreenMart</div>
+      <div class="brand-tagline">Farm Fresh · Organic · Natural</div>
+    </div>
+    <div class="invoice-meta">
+      <div class="invoice-label">Invoice</div>
+      <div class="invoice-number">ORD{{ order.id }}</div>
+      <div class="invoice-date">{{ order.created_at.strftime('%d %B %Y') }}</div>
+    </div>
+  </div>
+
+  <!-- STATUS STRIP -->
+  <div class="status-strip">
+    <div class="status-dot"></div>
+    <span class="status-text">Order Status —</span>
+    <span class="status-value">{{ order.status }}</span>
+    {% if order.tracking_id %}
+    <span class="status-text" style="margin-left:24px;">Tracking —</span>
+    <span class="status-value">{{ order.tracking_id }}</span>
+    {% endif %}
+  </div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- ADDRESSES -->
+    <div class="addresses">
+      <div class="addr-block">
+        <label>Billed To</label>
+        <div class="val">
+          <strong>{{ user.name }}</strong>
+          {{ user.email }}
+        </div>
+      </div>
+      <div class="addr-block">
+        <label>Shipped To</label>
+        <div class="val">
+          <strong>{{ order.shipping_name }}</strong>
+          {{ order.shipping_street }},<br>
+          {{ order.shipping_city }}, {{ order.shipping_state }}<br>
+          {{ order.shipping_pin }}
+        </div>
+      </div>
+      <div class="addr-block">
+        <label>Payment</label>
+        <div class="val">
+          <strong>{{ order.payment_method | upper }}</strong>
+          {{ order.payment_status }}<br>
+          {% if order.coupon_code %}
+          Coupon: {{ order.coupon_code }}
+          {% endif %}
+        </div>
+      </div>
     </div>
 
-    <!-- RIGHT -->
-    <div class="content">
-        <div class="header">
-            <h1>INVOICE</h1>
-            <span class="badge">{{ order.status }}</span>
-        </div>
-
-        <table>
-            <tr>
-                <th>Item</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>Total</th>
-            </tr>
-
-            {% for item in items %}
-            <tr>
-                <td>{{ item.name }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>${{ "%.2f"|format(item.price) }}</td>
-                <td>${{ "%.2f"|format(item.total) }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-
-        <div class="total-box">
-            <p>Subtotal: ${{ "%.2f"|format(subtotal) }}</p>
-            <p>GST (5%): ${{ "%.2f"|format(tax) }}</p>
-            <p class="grand">Grand Total: ₹{{ "%.2f"|format(grand_total) }}</p>
-        </div>
-        <div style="text-align: right;">
-    <a href="{{ url_for('views.pos_invoice', order_code='ORD' ~ order.id) }}"
-       class="download-btn">
-        ⬇ Download Invoice (PDF)
-    </a>
-</div>
-
-        
-        <div class="footer">
-            🌱 Thank you for shopping with GreenMart
-        </div>
+    <!-- ITEMS TABLE -->
+    <div class="items-section">
+      <div class="section-heading">Order Items</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>₹{{ "%.2f"|format(item.price) }}</td>
+            <td>₹{{ "%.2f"|format(item.total) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
 
+    <!-- TOTALS -->
+    <div class="totals-row">
+      <div class="totals-box">
+        <div class="total-line">
+          <span>Subtotal</span>
+          <span>₹{{ "%.2f"|format(subtotal) }}</span>
+        </div>
+        {% if order.delivery_charge %}
+        <div class="total-line">
+          <span>Delivery</span>
+          <span>₹{{ "%.2f"|format(order.delivery_charge) }}</span>
+        </div>
+        {% endif %}
+        {% if order.discount_amount %}
+        <div class="total-line">
+          <span>Discount</span>
+          <span style="color:#e74c3c;">− ₹{{ "%.2f"|format(order.discount_amount) }}</span>
+        </div>
+        {% endif %}
+        <div class="total-line">
+          <span>GST (5%)</span>
+          <span>₹{{ "%.2f"|format(tax) }}</span>
+        </div>
+        <hr class="total-divider">
+        <div class="grand-total">
+          <span class="label">Grand Total</span>
+          <span class="amount">₹{{ "%.2f"|format(grand_total) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="invoice-footer">
+      <div class="footer-note">
+        <strong>Thank You</strong>
+        Thank you for choosing GreenMart.<br>
+        For queries: support@greenmart.com
+      </div>
+      <a href="{{ url_for('views.pos_invoice', order_code='ORD' ~ order.id) }}"
+         class="download-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download PDF
+      </a>
+    </div>
+
+  </div>
+
+  <div class="bottom-accent"></div>
 </div>
 
 </body>

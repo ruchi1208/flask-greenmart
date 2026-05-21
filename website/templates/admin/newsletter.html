@@ -1,0 +1,110 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold">📧 Newsletter Management</h4>
+    <a href="{{ url_for('admin.export_subscribers') }}" class="btn btn-success btn-sm">
+      ⬇ Export CSV
+    </a>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <h2 class="text-success fw-bold mb-0">{{ total }}</h2>
+        <p class="text-muted mb-0 mt-1">Total Subscribers</p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <h2 class="text-primary fw-bold mb-0">{{ active }}</h2>
+        <p class="text-muted mb-0 mt-1">Active</p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <h2 class="text-warning fw-bold mb-0">{{ unique }}</h2>
+        <p class="text-muted mb-0 mt-1">Unique Emails</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Send Bulk Email -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-success text-white fw-bold">
+      📤 Send Bulk Newsletter (Unique Emails Only)
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('admin.send_newsletter') }}">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Subject</label>
+          <input type="text" name="subject" class="form-control"
+                 placeholder="e.g. 🎁 Weekend Sale — 30% Off!" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Content <small class="text-muted">(HTML allowed)</small></label>
+          <textarea name="content" class="form-control" rows="5"
+                    placeholder="Write newsletter content..." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-success px-4"
+                onclick="return confirm('{{ active }} active unique subscribers ને email send કરવો?')">
+          📨 Send Newsletter
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Subscribers Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+      <span>👥 All Subscribers</span>
+      <small class="text-muted">Unique constraint — duplicate emails blocked automatically</small>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Subscribed At</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sub in subscribers %}
+          <tr>
+            <td class="text-muted">{{ loop.index }}</td>
+            <td><i class="fa-solid fa-envelope me-1 text-success"></i> {{ sub.email }}</td>
+            <td>
+              {% if sub.is_active %}
+                <span class="badge bg-success">Active</span>
+              {% else %}
+                <span class="badge bg-secondary">Inactive</span>
+              {% endif %}
+            </td>
+            <td>{{ sub.subscribed_at.strftime('%d-%m-%Y %H:%M') }}</td>
+            <td>
+              <form method="POST"
+                    action="{{ url_for('admin.delete_subscriber', sub_id=sub.id) }}"
+                    onsubmit="return confirm('Delete {{ sub.email }}?')">
+                <button class="btn btn-outline-danger btn-sm">🗑 Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted py-5">
+              No subscribers yet — share your website!
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

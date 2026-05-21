@@ -1042,3 +1042,20 @@ input {
 .tracking-step .circle i {
   color: white;
 }
+
+.plant {
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s;
+  text-align: center;
+}
+.plant:hover { transform: scale(1.04); }
+
+
+@media (max-width: 991px) {
+  .row > div:last-child:nth-child(odd) {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
