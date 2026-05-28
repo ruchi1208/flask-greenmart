@@ -208,13 +208,13 @@
           {% endif %}
         {% endfor %}
       </h2>
-      <p>Sale banavo, products ane discounts manage karo, timer set karo</p>
+      <p>Make a sale, order producers and decanters, set a timer</p>
     </div>
   </div>
 
   <!-- ── Create New Sale ── -->
   <div class="create-card">
-    <h5><span>+</span> Navi Flash Sale Banavo</h5>
+    <h5><span>+</span> Create a new flash Sale.</h5>
     <form method="POST" action="{{ url_for('admin.create_flash_sale') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-row">
@@ -237,7 +237,7 @@
         </div>
         <div class="field">
           <label>&nbsp;</label>
-          <button type="submit" class="btn-create">⚡ Banavo</button>
+          <button type="submit" class="btn-create">⚡ Create</button>
         </div>
       </div>
     </form>
@@ -246,7 +246,7 @@
   <!-- ── Sales List ── -->
   <div class="sales-card">
     <div class="sales-card-header">
-      <h5>Badhi Flash Sales</h5>
+      <h5>All Flash Sales</h5>
       <span class="count-badge">{{ sales|length }} total</span>
     </div>
 
@@ -367,7 +367,7 @@
     {% else %}
     <div class="empty-state">
       <div class="empty-icon">⚡</div>
-      <p>Haju koi Flash Sale nathi.<br>Upar form bharaine pehli sale banavo!</p>
+      <p>There is no flash sale yet.<br>Create your first flash sale by filling out the form above!</p>
     </div>
     {% endif %}
   </div>

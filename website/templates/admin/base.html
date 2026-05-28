@@ -700,7 +700,7 @@
       <a href="{{ url_for('admin.dashboard') }}" class="sidebar-brand">
         <div class="brand-icon">🛒</div>
         <div>
-          <div class="brand-text">FreshMart</div>
+          <div class="brand-text">GreenMart</div>
           <div class="brand-sub">Admin Panel</div>
         </div>
       </a>
@@ -751,40 +751,49 @@
       </div>
 
       <!-- Marketing -->
-      <div class="nav-section">
-        <div class="nav-section-label">Marketing</div>
-        <a href="{{ url_for('admin.manage_coupons') }}"
-          class="nav-item-link {% if 'coupon' in request.endpoint %}active{% endif %}">
-          <i class="bi bi-ticket-perforated"></i> Coupons
-        </a>
-        <a href="{{ url_for('admin.newsletter') }}"
-          class="nav-item-link {% if 'newsletter' in request.endpoint %}active{% endif %}">
-          <i class="bi bi-envelope-paper"></i> Newsletter
-        </a>
-        <a href="{{ url_for('admin.manage_delivery_zones') }}"
-          class="nav-item-link {% if 'delivery' in request.endpoint %}active{% endif %}">
-          <i class="bi bi-geo-alt"></i> Delivery Zones
-        </a>
-        <a href="{{ url_for('admin.manage_flash_sales') }}"
-        class="nav-item-link {% if 'flash_sale' in request.endpoint %}active{% endif %}">
-          <i class="bi bi-lightning-charge"></i> Flash Sales
-        </a>
-        <!-- Admin sidebar ma paste karo -->
-        <a href="{{ url_for('admin.manage_testimonials') }}">
-          <i class="bi bi-chat-quote-fill"></i> Testimonials
-        </a>
+<div class="nav-section">
+  <div class="nav-section-label">Marketing</div>
 
-        <a href="{{ url_for('admin.admin_rewards') }}">
-          <i class="bi bi-wallet2"></i> Reward Wallets
-        </a>
-        <a href="{{ url_for('admin.manage_product_sales') }}" class="nav-link">
-  <i class="bi bi-tag-fill me-2"></i> Product Sales
-</a>
-<a href="{{ url_for('admin.manage_bundles') }}" class="nav-item-link">
-  <i class="bi bi-boxes"></i> Bundle Deals
-</a>
+  <a href="{{ url_for('admin.manage_coupons') }}"
+     class="nav-item-link {% if 'coupon' in request.endpoint %}active{% endif %}">
+    <i class="bi bi-ticket-perforated"></i> Coupons
+  </a>
 
-      </div>
+  <a href="{{ url_for('admin.newsletter') }}"
+     class="nav-item-link {% if 'newsletter' in request.endpoint %}active{% endif %}">
+    <i class="bi bi-envelope-paper"></i> Newsletter
+  </a>
+
+  <a href="{{ url_for('admin.manage_delivery_zones') }}"
+     class="nav-item-link {% if 'delivery' in request.endpoint %}active{% endif %}">
+    <i class="bi bi-geo-alt"></i> Delivery Zones
+  </a>
+
+  <a href="{{ url_for('admin.manage_flash_sales') }}"
+     class="nav-item-link {% if 'flash_sale' in request.endpoint %}active{% endif %}">
+    <i class="bi bi-lightning-charge"></i> Flash Sales
+  </a>
+
+  <a href="{{ url_for('admin.manage_testimonials') }}"
+     class="nav-item-link {% if 'testimonial' in request.endpoint %}active{% endif %}">
+    <i class="bi bi-chat-quote-fill"></i> Testimonials
+  </a>
+
+  <a href="{{ url_for('admin.admin_rewards') }}"
+     class="nav-item-link {% if 'reward' in request.endpoint %}active{% endif %}">
+    <i class="bi bi-wallet2"></i> Reward Wallets
+  </a>
+
+  <a href="{{ url_for('admin.manage_product_sales') }}"
+     class="nav-item-link {% if 'product_sale' in request.endpoint %}active{% endif %}">
+    <i class="bi bi-tag-fill"></i> Product Sales
+  </a>
+
+  <a href="{{ url_for('admin.manage_bundles') }}"
+     class="nav-item-link {% if 'bundle' in request.endpoint %}active{% endif %}">
+    <i class="bi bi-boxes"></i> Bundle Deals
+  </a>
+</div>
 
       <!-- System -->
       <div class="nav-section">
